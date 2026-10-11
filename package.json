@@ -2,6 +2,13 @@
   "name": "bettercampus-desktop",
   "private": true,
   "version": "0.1.0",
+  "description": "Planeador de horarios y utilidades para estudiantes de la Universidad Nacional de Colombia",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Camilo-neck/BCDesktop.git"
+  },
+  "homepage": "https://bettercampus.com.co",
   "type": "module",
   "scripts": {
     "dev": "vite",

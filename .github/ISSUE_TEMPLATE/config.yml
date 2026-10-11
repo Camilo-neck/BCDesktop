@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Reportar una vulnerabilidad
+    url: https://github.com/Camilo-neck/BCDesktop/security/advisories/new
+    about: Por privado, nunca en un issue público.
+  - name: BetterCampus web
+    url: https://bettercampus.com.co
+    about: La versión web del proyecto.

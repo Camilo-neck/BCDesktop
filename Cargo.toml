@@ -6,7 +6,9 @@ members = ["crates/bc-core", "src-tauri"]
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-authors = ["BetterCampus"]
+authors = ["BetterCampus contributors"]
+repository = "https://github.com/Camilo-neck/BCDesktop"
+homepage = "https://bettercampus.com.co"
 rust-version = "1.80"
 
 [workspace.dependencies]

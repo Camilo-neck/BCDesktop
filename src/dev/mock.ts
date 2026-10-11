@@ -30,7 +30,7 @@ function initialSelections(): Selection[] {
 }
 
 let schedules: Schedule[] = [
-  { id: "s1", name: "2026-2 · Plan A", selections: params.has("empty") ? [] : initialSelections(), blocks: [{ day: "WED", start: 14 * 60, end: 18 * 60, label: "Trabajo" }], createdAt: now(), updatedAt: now() },
+  { id: "s1", name: "2026-2 · Plan A", selections: params.has("empty") ? [] : initialSelections(), blocks: [{ day: "FRI", start: 14 * 60, end: 18 * 60, label: "Trabajo" }], createdAt: now(), updatedAt: now() },
   { id: "s2", name: "Plan B", selections: [], blocks: [], createdAt: now(), updatedAt: now() },
 ];
 

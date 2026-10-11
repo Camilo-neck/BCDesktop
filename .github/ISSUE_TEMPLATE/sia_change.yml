@@ -1,0 +1,28 @@
+name: Cambio en el SIA
+description: La app dejó de traer carreras, materias, grupos o prerrequisitos.
+labels: ["sia", "bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: ¿Qué dejó de funcionar?
+      description: Por ejemplo, "no carga las facultades de Medellín" o "los grupos salen sin horario".
+    validations:
+      required: true
+  - type: input
+    id: career
+    attributes:
+      label: Carrera y sede
+      placeholder: "2879 Ingeniería de Sistemas y Computación · Bogotá"
+    validations:
+      required: true
+  - type: input
+    id: course
+    attributes:
+      label: Código de la asignatura (si aplica)
+      placeholder: "2016696"
+  - type: textarea
+    id: error
+    attributes:
+      label: Mensaje de error
+      description: El texto que muestra la app.

@@ -1,0 +1,44 @@
+name: Reportar un bug
+description: Algo no funciona como debería.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Gracias por reportarlo. Si el problema es que el SIA cambió y la app ya no trae materias, usa la plantilla "Cambio en el SIA".
+  - type: textarea
+    id: what
+    attributes:
+      label: ¿Qué pasó?
+      description: Qué esperabas y qué ocurrió en cambio.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. Abrir el Planeador
+        2. Agregar la materia …
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión de BetterCampus
+      description: Aparece en Ajustes, al final de la página.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Sistema operativo
+      options: [Windows, macOS, Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Capturas o registros
+      description: Capturas de pantalla o mensajes de error. No pegues tu historia académica ni datos personales.
