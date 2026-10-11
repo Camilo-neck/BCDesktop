@@ -1,0 +1,44 @@
+usuario01
+Datos personales
+Plan de estudios
+2879 INGENIERÍA DE SISTEMAS Y COMPUTACIÓN
+Facultad: FACULTAD DE INGENIERÍA
+Hist. Acad.: 1 ACTIVA
+4.0 (Acumulado)
+PAPA - P.A.P.A
+4.1 (Acumulado)
+PA - Promedio académico
+Cálculo diferencial (1000004-B)	4	FUND. OBLIGATORIA	2023-1S Ordinaria	3.2
+Programación de computadores (2015734)	3	FUND. OBLIGATORIA	2023-1S Ordinaria	4.6
+Álgebra Lineal (1000003-B)	4	FUND. OBLIGATORIA	2023-1S Ordinaria	3.8
+Introducción a la ingeniería de sistemas y computación (2016375)	3	DISCIPLINAR OBLIGATORIA	2023-1S Ordinaria	4.4
+Cálculo integral (1000005-B)	4	FUND. OBLIGATORIA	2023-2S Ordinaria	2.4
+Programación orientada a objetos (2016375-1)	3	DISCIPLINAR OBLIGATORIA	2023-2S Ordinaria	4.1
+Matemáticas discretas I (2025963)	4	FUND. OBLIGATORIA	2023-2S Ordinaria	3.9
+Biología general (1000009-B)	3	LIBRE ELECCIÓN	2023-2S Ordinaria	4.7
+Cálculo integral (1000005-B)	4	FUND. OBLIGATORIA	2024-1S Ordinaria	3.6
+Estructuras de datos (2016699)	3	DISCIPLINAR OBLIGATORIA	2024-1S Ordinaria	4.3
+Fundamentos de mecánica (1000019-B)	4	FUND. OBLIGATORIA	2024-1S Ordinaria	3.4
+Matemáticas discretas II (2025964)	4	FUND. OBLIGATORIA	2024-1S Ordinaria	4.0
+Cálculo en varias variables (1000006-B)	4	FUND. OBLIGATORIA	2024-2S Ordinaria	3.7
+Algoritmos (2016696)	3	DISCIPLINAR OBLIGATORIA	2024-2S Ordinaria	4.5
+Fundamentos de electricidad y magnetismo (1000017-B)	4	FUND. OBLIGATORIA	2024-2S Ordinaria	3.3
+Bases de datos (2016353)	3	DISCIPLINAR OBLIGATORIA	2024-2S Ordinaria	4.8
+Cátedra de inducción universitaria (1000089-B)	1	LIBRE ELECCIÓN	2023-1S Ordinaria	
+APROBADA
+FUND. OBLIGATORIA	57	41	16	0	45
+FUND. OPTATIVA	9	0	9	0	0
+DISCIPLINAR OBLIGATORIA	58	18	40	0	18
+DISCIPLINAR OPTATIVA	21	0	21	0	0
+LIBRE ELECCIÓN	32	4	28	0	4
+TRABAJO DE GRADO	6	0	6	0	0
+NIVELACIÓN	4	0	4	0	0
+TOTAL	183	63	120	0	67
+TOTAL ESTUDIANTE	187	63	124	0	67
+Total Créditos Excedentes0
+Total de Créditos Cancelados en los Periodos Cursado3
+Porcentaje de Avance34,4%
+Créditos adicionales0
+Cupo de créditos68
+Créditos disponibles22
+Créditos de estudio doble titulación0

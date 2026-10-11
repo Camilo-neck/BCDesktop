@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * BetterCampus palette: the Material 3 green scheme of the web app
+ * (primary #006D30 / #5BDF7E), expressed as RGB triplets so Tailwind can
+ * apply opacity (`bg-primary/10`).
+ */
+@layer base {
+  :root {
+    --primary: 0 109 48;
+    --on-primary: 255 255 255;
+    --primary-container: 121 253 152;
+    --on-primary-container: 0 33 10;
+    --secondary: 81 99 81;
+    --on-secondary: 255 255 255;
+    --secondary-container: 211 232 209;
+    --on-secondary-container: 15 31 17;
+    --tertiary: 57 101 109;
+    --tertiary-container: 189 234 244;
+    --on-tertiary-container: 0 31 36;
+    --error: 186 26 26;
+    --error-container: 255 218 214;
+    --on-error-container: 65 0 2;
+    --warning: 156 105 0;
+    --warning-container: 255 222 166;
+
+    --surface: 249 250 244;
+    --surface-lowest: 255 255 255;
+    --surface-low: 243 244 238;
+    --surface-container: 237 238 233;
+    --surface-high: 231 233 227;
+    --surface-highest: 226 227 221;
+    --on-surface: 26 28 25;
+    --on-surface-variant: 65 73 65;
+    --outline: 114 121 112;
+    --outline-variant: 193 201 190;
+
+    --typ-disciplinar: 160 126 0;
+    --typ-fundamental: 137 42 238;
+    --typ-libre: 41 137 222;
+    --typ-nivelacion: 255 121 24;
+    --typ-grado: 220 50 180;
+
+    color-scheme: light;
+  }
+
+  .dark {
+    --primary: 91 223 126;
+    --on-primary: 0 57 22;
+    --primary-container: 0 83 34;
+    --on-primary-container: 121 253 152;
+    --secondary: 184 204 182;
+    --on-secondary: 35 52 37;
+    --secondary-container: 57 75 58;
+    --on-secondary-container: 211 232 209;
+    --tertiary: 161 206 215;
+    --tertiary-container: 31 77 85;
+    --on-tertiary-container: 189 234 244;
+    --error: 255 180 171;
+    --error-container: 147 0 10;
+    --on-error-container: 255 218 214;
+    --warning: 241 191 99;
+    --warning-container: 90 64 0;
+
+    --surface: 17 20 17;
+    --surface-lowest: 12 15 12;
+    --surface-low: 26 28 25;
+    --surface-container: 30 32 29;
+    --surface-high: 40 43 39;
+    --surface-highest: 51 53 50;
+    --on-surface: 226 227 221;
+    --on-surface-variant: 193 201 190;
+    --outline: 139 147 137;
+    --outline-variant: 65 73 65;
+
+    --typ-disciplinar: 240 224 101;
+    --typ-fundamental: 146 116 255;
+    --typ-libre: 102 184 254;
+    --typ-nivelacion: 255 152 79;
+    --typ-grado: 255 97 221;
+
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-outline-variant/60;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-surface text-on-surface antialiased;
+    font-feature-settings: "tnum" 0;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* Text the student may want to copy stays selectable. */
+  input,
+  textarea,
+  [data-selectable] {
+    user-select: text;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary/60 ring-offset-1 ring-offset-surface;
+  }
+
+  ::selection {
+    @apply bg-primary/25;
+  }
+}
+
+@layer components {
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--outline) / 0.35) transparent;
+  }
+  .scroll-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: rgb(var(--outline) / 0.3);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--outline) / 0.5);
+    background-clip: content-box;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card {
+    @apply rounded-2xl border border-outline-variant/50 bg-surface-lowest dark:bg-surface-low;
+  }
+
+  .kbd {
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded border border-outline-variant bg-surface-container px-1 font-sans text-[10px] font-medium text-on-surface-variant;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-surface-high;
+  }
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent;
+  }
+}

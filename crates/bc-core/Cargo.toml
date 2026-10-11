@@ -1,0 +1,29 @@
+[package]
+name = "bc-core"
+description = "BetterCampus core: SIA scraping, schedule generation, academic history and curriculum analysis"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+reqwest.workspace = true
+chrono.workspace = true
+log.workspace = true
+scraper = "0.27"
+regex = "1"
+deunicode = "1"
+rusqlite = { version = "0.40", features = ["bundled"] }
+futures = "0.3"
+sha2 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+url = "2"
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
