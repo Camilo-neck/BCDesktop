@@ -64,6 +64,8 @@ export function useSetSetting() {
   const qc = useQueryClient();
   const m = useMutation({
     mutationFn: ({ key, value }: { key: keyof Settings; value: unknown }) => api.setSetting(key, value),
+    // Commands run concurrently in the backend: queue writes so a slider drag stores its last value.
+    scope: { id: "settings" },
     onMutate: async ({ key, value }) => {
       await qc.cancelQueries({ queryKey: ["settings"] });
       const prev = qc.getQueryData<Settings>(["settings"]);
