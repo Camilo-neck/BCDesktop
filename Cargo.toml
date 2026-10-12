@@ -5,7 +5,7 @@ members = ["crates/bc-core", "src-tauri"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
 authors = ["BetterCampus contributors"]
 repository = "https://github.com/Camilo-neck/BCDesktop"
 homepage = "https://bettercampus.com.co"

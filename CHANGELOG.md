@@ -4,6 +4,10 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 
 ## [Sin publicar]
 
+### Cambiado
+
+- **Cambio de licencia:** el proyecto pasa de MIT a [PolyForm Noncommercial 1.0.0](LICENSE). El código sigue siendo público, pero cualquier uso comercial requiere autorización previa y por escrito de los mantenedores. Las versiones hasta la 0.1.0 siguen bajo MIT.
+
 ## [0.1.0] - 2026-10-11
 
 Primera versión de escritorio, construida sobre Tauri 2, React y un núcleo en Rust.
