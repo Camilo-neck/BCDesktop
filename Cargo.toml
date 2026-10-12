@@ -5,11 +5,13 @@ members = ["crates/bc-core", "src-tauri"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
 authors = ["BetterCampus contributors"]
 repository = "https://github.com/Camilo-neck/BCDesktop"
 homepage = "https://bettercampus.com.co"
-rust-version = "1.80"
+# Lowest toolchain the locked dependencies accept (Tauri needs 1.90).
+# The `msrv` CI job builds bc-core with exactly this version.
+rust-version = "1.90"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }

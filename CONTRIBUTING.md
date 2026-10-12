@@ -88,4 +88,4 @@ Para temas de conducta o seguridad, escribe por privado a un mantenedor. Las vul
 
 ## Licencia
 
-Al contribuir aceptas que tu aporte se publique bajo la [licencia MIT](LICENSE) del proyecto.
+Al contribuir aceptas que tu aporte se publique bajo la [licencia PolyForm Noncommercial 1.0.0](LICENSE) del proyecto, y que los mantenedores puedan otorgar licencias comerciales sobre el proyecto, incluido tu aporte.
