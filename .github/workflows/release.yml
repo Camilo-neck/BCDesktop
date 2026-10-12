@@ -54,7 +54,16 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "BetterCampus ${{ github.ref_name }}"
-          releaseBody: "Descarga el instalador para tu sistema en los archivos de abajo."
+          releaseBody: |
+            Descarga el instalador para tu sistema en los archivos de abajo:
+
+            - **Windows**: `*_x64-setup.exe`
+            - **macOS**: `*_universal.dmg`
+            - **Linux**: `.AppImage`, `.deb` o `.rpm`
+
+            Los instaladores aún no están firmados. En Windows elige *Más información › Ejecutar de todas formas*; en macOS abre la app con clic derecho › *Abrir*.
+
+            Cambios de esta versión: [CHANGELOG](https://github.com/Camilo-neck/BCDesktop/blob/${{ github.ref_name }}/CHANGELOG.md).
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
