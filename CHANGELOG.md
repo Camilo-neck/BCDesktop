@@ -4,6 +4,10 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 
 ## [Sin publicar]
 
+### Corregido
+
+- La ventana ya no se congela mientras se procesa la historia académica, se dibuja el plan de estudios, se exporta el calendario o se guardan datos.
+
 ## [0.1.0] - 2026-10-11
 
 Primera versión de escritorio, construida sobre Tauri 2, React y un núcleo en Rust.

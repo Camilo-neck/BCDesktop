@@ -18,7 +18,7 @@ pub struct AppInfo {
     pub google_configured: bool,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn app_info(state: State<'_, AppState>) -> AppInfo {
     AppInfo {
         version: env!("CARGO_PKG_VERSION"),
@@ -46,14 +46,14 @@ const PUBLIC_KEYS: &[&str] = &[
     "activeScheduleId",
 ];
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn settings_get(state: State<'_, AppState>) -> CmdResult<Map<String, Value>> {
     let mut all = state.db().settings()?;
     all.retain(|k, _| PUBLIC_KEYS.contains(&k.as_str()));
     Ok(all)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn settings_set(state: State<'_, AppState>, key: String, value: Value) -> CmdResult<()> {
     if !PUBLIC_KEYS.contains(&key.as_str()) {
         return Err(bc_core::Error::Invalid(format!(
@@ -63,7 +63,7 @@ pub fn settings_set(state: State<'_, AppState>, key: String, value: Value) -> Cm
     state.db().set_setting(&key, &value)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn cache_clear(state: State<'_, AppState>) -> CmdResult<usize> {
     state.db().cache_clear()
 }
