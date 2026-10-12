@@ -72,7 +72,7 @@ fn schedule_events(
     Ok((schedule, events))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn export_ics(
     state: State<'_, AppState>,
     schedule_id: String,
@@ -84,7 +84,7 @@ pub fn export_ics(
     Ok(path.display().to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn google_status(state: State<'_, AppState>) -> Option<Account> {
     state.google_account()
 }

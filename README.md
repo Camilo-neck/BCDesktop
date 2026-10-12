@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/Camilo-neck/BCDesktop/actions/workflows/ci.yml/badge.svg)](https://github.com/Camilo-neck/BCDesktop/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Camilo-neck/BCDesktop?include_prereleases&label=versión)](https://github.com/Camilo-neck/BCDesktop/releases)
-[![Licencia MIT](https://img.shields.io/badge/licencia-MIT-green.svg)](LICENSE)
+[![Licencia PolyForm Noncommercial](https://img.shields.io/badge/licencia-PolyForm%20Noncommercial-orange.svg)](LICENSE)
 ![Plataformas](https://img.shields.io/badge/plataformas-Windows%20·%20macOS%20·%20Linux-informational)
 
 [Descargar](https://github.com/Camilo-neck/BCDesktop/releases/latest) · [Contribuir](CONTRIBUTING.md) · [Arquitectura](docs/ARCHITECTURE.md) · [Reportar un problema](https://github.com/Camilo-neck/BCDesktop/issues/new/choose)
@@ -120,4 +120,6 @@ BetterCampus es un proyecto estudiantil independiente y no está afiliado a la U
 
 ## Licencia
 
-[MIT](LICENSE) © BetterCampus contributors
+[PolyForm Noncommercial 1.0.0](LICENSE) © BetterCampus contributors
+
+El código es público y puedes usarlo, estudiarlo, modificarlo y redistribuirlo con fines **no comerciales**. Cualquier uso con ánimo de lucro (vender el software o versiones derivadas, monetizarlo con anuncios, suscripciones, etc.) requiere autorización previa y por escrito de los mantenedores.

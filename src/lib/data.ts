@@ -70,6 +70,8 @@ export function useScheduleEditor() {
 
   const save = useMutation({
     mutationFn: api.saveSchedule,
+    // Commands run concurrently in the backend: queue saves so an older edit never lands last.
+    scope: { id: "schedules" },
     onMutate: async (s: Schedule) => {
       await qc.cancelQueries({ queryKey: ["schedules"] });
       const prev = qc.getQueryData<Schedule[]>(["schedules"]);

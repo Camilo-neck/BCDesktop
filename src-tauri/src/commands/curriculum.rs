@@ -20,7 +20,7 @@ pub struct PlanSummary {
     pub fetched_at: DateTime<Utc>,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn plans_list(state: State<'_, AppState>) -> CmdResult<Vec<PlanSummary>> {
     Ok(state
         .db()
@@ -66,12 +66,12 @@ pub async fn plan_fetch(
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn plan_delete(state: State<'_, AppState>, career_key: String) -> CmdResult<()> {
     state.db().delete_plan(&career_key)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn plan_graph(
     state: State<'_, AppState>,
     career_key: String,
