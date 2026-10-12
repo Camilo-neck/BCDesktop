@@ -80,6 +80,8 @@ struct Slot {
     code: String,
     credits: u32,
     candidates: Vec<Candidate>,
+    /// The student fixed this course's group, so no result may leave it out.
+    locked: bool,
 }
 
 /// Heap entry ordered by score so the worst kept schedule is on top.
@@ -118,6 +120,19 @@ fn forbidden_mask(c: &Constraints) -> WeekMask {
     m
 }
 
+/// Why `course` has no candidate group left, for the student.
+fn empty_reason(course: &Course, locked: Option<&Selection>, mut filters: Vec<&str>) -> String {
+    if course.groups.is_empty() {
+        return "No tiene grupos publicados".to_owned();
+    }
+    if let Some(l) = locked {
+        return format!("El grupo {} que fijaste ya no se ofrece", l.group_id);
+    }
+    filters.sort_unstable();
+    filters.dedup();
+    format!("Ningún grupo cumple los filtros ({})", filters.join(", "))
+}
+
 fn build_slots(req: &GenerateRequest) -> (Vec<Slot>, Vec<Unschedulable>) {
     let c = &req.constraints;
     let forbidden = forbidden_mask(c);
@@ -126,6 +141,8 @@ fn build_slots(req: &GenerateRequest) -> (Vec<Slot>, Vec<Unschedulable>) {
     let mut slots = Vec::new();
     let mut unschedulable = Vec::new();
     let mut seen = HashSet::new();
+    // Weeks of the locked groups kept so far, with their course name, to report locks that collide.
+    let mut locked_masks: Vec<(WeekMask, &str)> = Vec::new();
 
     for course in &req.courses {
         if !seen.insert(course.code.as_str()) {
@@ -172,26 +189,31 @@ fn build_slots(req: &GenerateRequest) -> (Vec<Slot>, Vec<Unschedulable>) {
             })
             .collect();
 
-        if candidates.is_empty() {
-            let reason = if course.groups.is_empty() {
-                "No tiene grupos publicados".to_owned()
-            } else {
-                reasons.sort_unstable();
-                reasons.dedup();
-                format!("Ningún grupo cumple los filtros ({})", reasons.join(", "))
-            };
+        let clash = locked
+            .and(candidates.first())
+            .and_then(|cand| locked_masks.iter().find(|(m, _)| m.intersects(&cand.mask)));
+        let reason = if candidates.is_empty() {
+            Some(empty_reason(course, locked, reasons))
+        } else {
+            clash.map(|(_, name)| format!("Choca con el grupo fijado de {name}"))
+        };
+        if let Some(reason) = reason {
             unschedulable.push(Unschedulable {
                 code: course.code.clone(),
                 name: course.name.clone(),
                 reason,
             });
-        } else {
-            slots.push(Slot {
-                code: course.code.clone(),
-                credits: course.credits as u32,
-                candidates,
-            });
+            continue;
         }
+        if locked.is_some() {
+            locked_masks.push((candidates[0].mask, course.name.as_str()));
+        }
+        slots.push(Slot {
+            code: course.code.clone(),
+            credits: course.credits as u32,
+            candidates,
+            locked: locked.is_some(),
+        });
     }
     // Fail-first: the most constrained course is decided first.
     slots.sort_by_key(|s| s.candidates.len());
@@ -326,7 +348,7 @@ impl Search<'_> {
             }
         }
         self.chosen[i] = None;
-        if self.allow_skip {
+        if self.allow_skip && !slot.locked {
             self.dfs(i + 1, mask, credits, included);
         }
     }
@@ -576,5 +598,60 @@ mod tests {
         let out = generate(&r);
         assert_eq!(out.schedules.len(), 1);
         assert_eq!(out.schedules[0].selections[0].group_id, "2");
+    }
+
+    fn lock(code: &str, group_id: &str) -> Selection {
+        Selection {
+            course_code: code.into(),
+            group_id: group_id.into(),
+        }
+    }
+
+    #[test]
+    fn locked_course_is_kept_when_another_collides_with_it() {
+        let mut r = req(vec![
+            course("A", 3, vec![group("1", &[(Day::Mon, 7, 9)], None)]),
+            course("B", 3, vec![group("1", &[(Day::Mon, 8, 10)], None)]),
+        ]);
+        r.constraints.locked = vec![lock("B", "1")];
+        let out = generate(&r);
+        assert!(!out.complete);
+        assert_eq!(out.schedules.len(), 1);
+        assert_eq!(out.schedules[0].selections, vec![lock("B", "1")]);
+        assert_eq!(out.schedules[0].omitted, vec!["A".to_string()]);
+    }
+
+    #[test]
+    fn colliding_locked_courses_are_reported() {
+        let mut r = req(vec![
+            course("A", 3, vec![group("1", &[(Day::Mon, 7, 9)], None)]),
+            course("B", 3, vec![group("1", &[(Day::Mon, 8, 10)], None)]),
+        ]);
+        r.constraints.locked = vec![lock("A", "1"), lock("B", "1")];
+        let out = generate(&r);
+        assert_eq!(out.unschedulable.len(), 1);
+        assert_eq!(out.unschedulable[0].code, "B");
+        assert_eq!(
+            out.unschedulable[0].reason,
+            "Choca con el grupo fijado de Curso A"
+        );
+        assert!(out.complete);
+        assert_eq!(out.schedules[0].selections, vec![lock("A", "1")]);
+    }
+
+    #[test]
+    fn missing_locked_group_has_a_clear_reason() {
+        let mut r = req(vec![course(
+            "A",
+            3,
+            vec![group("1", &[(Day::Mon, 7, 9)], None)],
+        )]);
+        r.constraints.locked = vec![lock("A", "99")];
+        let out = generate(&r);
+        assert_eq!(out.unschedulable.len(), 1);
+        assert_eq!(
+            out.unschedulable[0].reason,
+            "El grupo 99 que fijaste ya no se ofrece"
+        );
     }
 }

@@ -4,6 +4,10 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 
 ## [Sin publicar]
 
+### Corregido
+
+- Con «Fijar elegidos», el generador ya no deja fuera una materia fijada cuando no caben todas. Si dos materias fijadas se cruzan o el grupo fijado ya no se ofrece, lo indica con el motivo.
+
 ## [0.1.0] - 2026-10-11
 
 Primera versión de escritorio, construida sobre Tauri 2, React y un núcleo en Rust.
