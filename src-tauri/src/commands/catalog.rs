@@ -137,7 +137,7 @@ pub async fn catalog_courses(
     .await
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn sia_cancel(state: State<'_, AppState>) {
     state.cancel.cancel();
 }

@@ -43,7 +43,7 @@ fn library_of(state: &AppState) -> CmdResult<Library> {
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn library_list(state: State<'_, AppState>) -> CmdResult<Library> {
     library_of(&state)
 }
@@ -131,7 +131,7 @@ pub async fn library_refresh(
 }
 
 /// Add or replace a course typed by the student.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn library_save_manual(state: State<'_, AppState>, mut course: Course) -> CmdResult<Library> {
     if course.code.trim().is_empty() || course.name.trim().is_empty() {
         return Err(Error::Invalid(
@@ -148,13 +148,13 @@ pub fn library_save_manual(state: State<'_, AppState>, mut course: Course) -> Cm
     library_of(&state)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn library_remove(state: State<'_, AppState>, code: String) -> CmdResult<Library> {
     state.db().remove_course(&code)?;
     library_of(&state)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn library_set_color(state: State<'_, AppState>, code: String, color: String) -> CmdResult<()> {
     let valid = color.len() == 7
         && color.starts_with('#')
@@ -166,7 +166,7 @@ pub fn library_set_color(state: State<'_, AppState>, code: String, color: String
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn favorites_toggle(state: State<'_, AppState>, selection: Selection) -> CmdResult<bool> {
     state.db().toggle_favorite(&selection)
 }

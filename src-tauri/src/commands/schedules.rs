@@ -8,7 +8,7 @@ use tauri::State;
 use super::CmdResult;
 use crate::state::AppState;
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn schedules_list(state: State<'_, AppState>) -> CmdResult<Vec<Schedule>> {
     let db = state.db();
     let mut list = db.schedules()?;
@@ -20,7 +20,7 @@ pub fn schedules_list(state: State<'_, AppState>) -> CmdResult<Vec<Schedule>> {
     Ok(list)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn schedule_create(state: State<'_, AppState>, name: String) -> CmdResult<Schedule> {
     let name = name.trim();
     let s = Schedule::new(if name.is_empty() {
@@ -32,7 +32,7 @@ pub fn schedule_create(state: State<'_, AppState>, name: String) -> CmdResult<Sc
     Ok(s)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn schedule_save(state: State<'_, AppState>, mut schedule: Schedule) -> CmdResult<Schedule> {
     if schedule.name.trim().is_empty() {
         return Err(Error::Invalid("El horario necesita un nombre.".into()));
@@ -42,7 +42,7 @@ pub fn schedule_save(state: State<'_, AppState>, mut schedule: Schedule) -> CmdR
     Ok(schedule)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn schedule_duplicate(state: State<'_, AppState>, id: String) -> CmdResult<Schedule> {
     let db = state.db();
     let src = db
@@ -57,13 +57,13 @@ pub fn schedule_duplicate(state: State<'_, AppState>, id: String) -> CmdResult<S
     Ok(copy)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn schedule_delete(state: State<'_, AppState>, id: String) -> CmdResult<()> {
     state.db().delete_schedule(&id)?;
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn schedules_reorder(state: State<'_, AppState>, ids: Vec<String>) -> CmdResult<()> {
     state.db().reorder_schedules(&ids)?;
     Ok(())
