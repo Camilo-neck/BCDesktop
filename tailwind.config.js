@@ -48,11 +48,9 @@ export default {
         elev3: "0 12px 32px rgb(0 0 0 / 0.18), 0 2px 6px rgb(0 0 0 / 0.08)",
       },
       keyframes: {
-        "fade-up": { from: { opacity: "0", transform: "translateY(4px)" }, to: { opacity: "1", transform: "none" } },
         shimmer: { "100%": { transform: "translateX(100%)" } },
       },
       animation: {
-        "fade-up": "fade-up 180ms ease-out both",
         shimmer: "shimmer 1.6s infinite",
       },
     },

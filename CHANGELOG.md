@@ -10,6 +10,8 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 - La ventana ya no se congela mientras se procesa la historia académica, se dibuja el plan de estudios, se exporta el calendario o se guardan datos.
 - El tutorial de «Agregar asignaturas» ya se puede avanzar y cerrar, y los clics ya no atraviesan su fondo hacia la ventana de atrás.
 - Un clic fuera de la tarjeta ya no salta el tutorial. Al omitirlo, la app indica dónde repetirlo.
+- La app ya no parpadea al cambiar de sección, y los datos y gráficos de «Mi avance» ya no parpadean al abrirla.
+
 ### Cambiado
 
 - **Cambio de licencia:** el proyecto pasa de MIT a [PolyForm Noncommercial 1.0.0](LICENSE). El código sigue siendo público, pero cualquier uso comercial requiere autorización previa y por escrito de los mantenedores. Las versiones hasta la 0.1.0 siguen bajo MIT.
