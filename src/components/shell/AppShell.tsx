@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
-import { AnimatePresence, motion } from "motion/react";
+import { NavLink, Outlet, useNavigate } from "react-router";
+import { motion } from "motion/react";
 import {
   CalendarRange,
   ChevronsLeft,
@@ -74,7 +74,6 @@ function RailLink({ to, label, icon: Icon, collapsed, shortcut }: { to: string; 
 export function AppShell() {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const navigate = useNavigate();
-  const location = useLocation();
   const { theme } = useSettings();
   const setSetting = useSetSetting();
   const setPaletteOpen = useUi((s) => s.setPaletteOpen);
@@ -190,18 +189,10 @@ export function AppShell() {
       </aside>
 
       <main className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-outline-variant/50 bg-surface shadow-elev1 dark:bg-surface">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.14 }}
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+        {/* No page transition: any fade that starts invisible leaves the panel blank for a moment. */}
+        <div className="flex min-h-0 flex-1 flex-col">
+          <Outlet />
+        </div>
         <ProgressPill />
       </main>
       <CommandPalette />

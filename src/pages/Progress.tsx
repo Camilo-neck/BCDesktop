@@ -168,7 +168,7 @@ function Dashboard({ h }: { h: AcademicHistory }) {
   const axis = { tick: { fontSize: 11, fill: color("on-surface-variant") }, stroke: color("outline-variant") };
 
   return (
-    <div className="flex flex-col gap-5 animate-fade-up">
+    <div className="flex flex-col gap-5">
       <div className="grid grid-cols-5 gap-3">
         <Stat label="P.A.P.A." value={formatAvg(h.papa)} hint="Promedio de todas las notas" />
         <Stat label="P.A." value={formatAvg(h.pa)} hint="Mejor nota aprobada por materia" />
@@ -217,13 +217,14 @@ function Dashboard({ h }: { h: AcademicHistory }) {
                 {chart === "avg" ? <YAxis domain={[2.5, 5]} ticks={[2.5, 3, 3.5, 4, 4.5, 5]} {...axis} /> : <YAxis domain={[0, 100]} unit="%" {...axis} />}
                 <ChartTooltip {...tooltipStyle} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
+                {/* No entry animation: it replayed on every visit to the page and read as a flicker. */}
                 {chart === "avg"
                   ? [
-                      <Line key="papa" type="monotone" dataKey="PAPA" stroke={color("primary")} strokeWidth={2.2} dot={{ r: 3 }} />,
-                      <Line key="pa" type="monotone" dataKey="PA" stroke={color("typ-fundamental")} strokeWidth={2} dot={{ r: 3 }} />,
-                      <Line key="papi" type="monotone" dataKey="PAPI" stroke={color("typ-libre")} strokeWidth={1.6} strokeDasharray="4 3" dot={{ r: 2.5 }} />,
+                      <Line isAnimationActive={false} key="papa" type="monotone" dataKey="PAPA" stroke={color("primary")} strokeWidth={2.2} dot={{ r: 3 }} />,
+                      <Line isAnimationActive={false} key="pa" type="monotone" dataKey="PA" stroke={color("typ-fundamental")} strokeWidth={2} dot={{ r: 3 }} />,
+                      <Line isAnimationActive={false} key="papi" type="monotone" dataKey="PAPI" stroke={color("typ-libre")} strokeWidth={1.6} strokeDasharray="4 3" dot={{ r: 2.5 }} />,
                     ]
-                  : <Line type="monotone" dataKey="avance" name="Avance acumulado" stroke={color("primary")} strokeWidth={2.2} dot={{ r: 3 }} />}
+                  : <Line isAnimationActive={false} type="monotone" dataKey="avance" name="Avance acumulado" stroke={color("primary")} strokeWidth={2.2} dot={{ r: 3 }} />}
               </LineChart>
             </ResponsiveContainer>
           </div>
