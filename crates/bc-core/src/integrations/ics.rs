@@ -66,9 +66,6 @@ pub fn to_ics(calendar_name: &str, events: &[CalendarEvent]) -> String {
     ];
     for (i, e) in events.iter().enumerate() {
         let first = e.first_date();
-        if first > e.until {
-            continue;
-        }
         lines.extend([
             "BEGIN:VEVENT".into(),
             format!("UID:{}-{}-{}@bettercampus", stamp, i, e.day.ical()),
