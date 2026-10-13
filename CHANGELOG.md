@@ -8,6 +8,8 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 
 - Con «Fijar elegidos», el generador ya no deja fuera una materia fijada cuando no caben todas. Si dos materias fijadas se cruzan o el grupo fijado ya no se ofrece, lo indica con el motivo.
 - La ventana ya no se congela mientras se procesa la historia académica, se dibuja el plan de estudios, se exporta el calendario o se guardan datos.
+- El tutorial de «Agregar asignaturas» ya se puede avanzar y cerrar, y los clics ya no atraviesan su fondo hacia la ventana de atrás.
+- Un clic fuera de la tarjeta ya no salta el tutorial. Al omitirlo, la app indica dónde repetirlo.
 ### Cambiado
 
 - **Cambio de licencia:** el proyecto pasa de MIT a [PolyForm Noncommercial 1.0.0](LICENSE). El código sigue siendo público, pero cualquier uso comercial requiere autorización previa y por escrito de los mantenedores. Las versiones hasta la 0.1.0 siguen bajo MIT.

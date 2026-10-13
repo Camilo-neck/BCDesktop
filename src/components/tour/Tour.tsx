@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { create } from "zustand";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSetSetting, useSettings, useSettingsLoaded } from "@/lib/settings";
 import { cn } from "@/lib/utils";
@@ -92,12 +93,18 @@ export function TourHost() {
   const [cardH, setCardH] = useState(180);
   const [card, setCard] = useState<HTMLDivElement | null>(null);
 
-  const finish = useCallback(() => {
+  const complete = useCallback(() => {
     if (id) void setSetting("tours", { ...settings.tours, [id]: true });
     stop();
   }, [id, settings.tours, setSetting, stop]);
 
-  const next = useCallback(() => (step + 1 < steps.length ? go(step + 1) : finish()), [step, steps.length, go, finish]);
+  // A skipped tour never starts on its own again, so say where to replay it.
+  const skip = useCallback(() => {
+    complete();
+    toast("Puedes repetir el tutorial cuando quieras en Ajustes › Tutoriales.");
+  }, [complete]);
+
+  const next = useCallback(() => (step + 1 < steps.length ? go(step + 1) : complete()), [step, steps.length, go, complete]);
   const back = useCallback(() => step > 0 && go(step - 1), [step, go]);
 
   // Follow the target while the layout moves (panels opening, window resize).
@@ -125,7 +132,7 @@ export function TourHost() {
   useEffect(() => {
     if (!id) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") finish();
+      if (e.key === "Escape") skip();
       else if (e.key === "ArrowRight" || e.key === "Enter") next();
       else if (e.key === "ArrowLeft") back();
       else return;
@@ -134,15 +141,18 @@ export function TourHost() {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [id, next, back, finish]);
+  }, [id, next, back, skip]);
 
   if (!id || !current) return null;
   const pos = cardPosition(rect, current.placement, cardH);
   const hole = rect && { x: rect.left - PAD, y: rect.top - PAD, w: rect.width + PAD * 2, h: rect.height + PAD * 2 };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100]" aria-live="polite">
-      <svg className="absolute inset-0 size-full" onClick={finish}>
+    // A modal dialog sets `pointer-events: none` on <body>, which this portal would inherit: re-enable it so the
+    // tour stays usable over dialogs. `data-tour-host` lets dialogs ignore clicks here (see DialogContent).
+    // The backdrop has no click handler: only Omitir, the close button or Esc skip a tour.
+    <div data-tour-host className="pointer-events-auto fixed inset-0 z-[100]" aria-live="polite">
+      <svg className="absolute inset-0 size-full">
         <defs>
           <mask id="tour-mask">
             <rect width="100%" height="100%" fill="white" />
@@ -184,7 +194,7 @@ export function TourHost() {
           role="dialog"
           aria-label={current.title}
         >
-          <button onClick={finish} className="absolute right-3 top-3 rounded-lg p-1 text-on-surface-variant hover:bg-on-surface/5" aria-label="Cerrar recorrido">
+          <button onClick={skip} className="absolute right-3 top-3 rounded-lg p-1 text-on-surface-variant hover:bg-on-surface/5" aria-label="Cerrar recorrido">
             <X className="size-4" />
           </button>
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
@@ -204,7 +214,7 @@ export function TourHost() {
                   <ArrowLeft /> Atrás
                 </Button>
               ) : (
-                <Button variant="ghost" size="sm" onClick={finish}>
+                <Button variant="ghost" size="sm" onClick={skip}>
                   Omitir
                 </Button>
               )}
