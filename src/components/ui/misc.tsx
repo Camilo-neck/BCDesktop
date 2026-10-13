@@ -91,7 +91,7 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center px-6 py-10 text-center animate-fade-up", className)}>
+    <div className={cn("flex flex-col items-center justify-center px-6 py-10 text-center", className)}>
       <div className="mb-4 grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary [&_svg]:size-7">{icon}</div>
       <h3 className="text-[15px] font-semibold">{title}</h3>
       {description && <p className="mt-1.5 max-w-sm text-sm text-on-surface-variant">{description}</p>}
