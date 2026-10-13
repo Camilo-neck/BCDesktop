@@ -1,5 +1,6 @@
 // Typed wrappers over the Tauri commands in src-tauri/src/commands.
 import { invoke } from "@tauri-apps/api/core";
+import { useUi } from "./store";
 import type {
   AppInfo,
   CareerRef,
@@ -30,6 +31,9 @@ export class ApiError extends Error {
   }
 }
 
+/** Commands that report progress through `bc://progress`. */
+const LONG_TASKS = new Set(["library_fetch", "library_refresh", "plan_fetch", "google_export"]);
+
 export const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -40,6 +44,8 @@ async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> 
     }
     return await invoke<T>(cmd, args);
   } catch (e) {
+    // A task that fails midway never sends its final progress event: clear the indicator here.
+    if (LONG_TASKS.has(cmd)) useUi.getState().setProgress(null);
     if (e && typeof e === "object" && "message" in e) throw new ApiError(e as CoreError);
     throw new ApiError({ kind: "external", message: String(e) });
   }
