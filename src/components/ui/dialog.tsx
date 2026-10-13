@@ -22,12 +22,17 @@ Overlay.displayName = "DialogOverlay";
 type ContentProps = ComponentPropsWithoutRef<typeof D.Content> & { side?: "center" | "right"; hideClose?: boolean };
 
 export const DialogContent = forwardRef<ElementRef<typeof D.Content>, ContentProps>(
-  ({ className, children, side = "center", hideClose, ...p }, ref) => (
+  ({ className, children, side = "center", hideClose, onInteractOutside, ...p }, ref) => (
     <D.Portal>
       <Overlay />
       <D.Content
         ref={ref}
         aria-describedby={undefined}
+        // A guided tour drawn over the dialog lives outside it: using the tour must not close the dialog.
+        onInteractOutside={(e) => {
+          if (e.target instanceof Element && e.target.closest("[data-tour-host]")) e.preventDefault();
+          else onInteractOutside?.(e);
+        }}
         className={cn(
           "fixed z-50 flex flex-col border border-outline-variant/60 bg-surface-lowest shadow-elev3 outline-none dark:bg-surface-low",
           side === "center" &&
