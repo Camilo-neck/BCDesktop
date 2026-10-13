@@ -15,6 +15,7 @@ import type {
   GoogleAccount,
   Library,
   PlanSummary,
+  Progress,
   Professor,
   Projection,
   Schedule,
@@ -31,21 +32,38 @@ export class ApiError extends Error {
   }
 }
 
-/** Commands that report progress through `bc://progress`. */
-const LONG_TASKS = new Set(["library_fetch", "library_refresh", "plan_fetch", "google_export"]);
+/** Commands that report progress through `bc://progress`, and the task they report as. */
+const LONG_TASKS: Partial<Record<string, Progress["task"]>> = {
+  library_fetch: "courses",
+  library_refresh: "courses",
+  plan_fetch: "plan",
+  google_export: "google",
+};
 
 export const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+/** Remove the indicator if it still shows the starting state of `task` (no event ever arrived). */
+function clearIfStarting(task: Progress["task"]) {
+  const { progress, setProgress } = useUi.getState();
+  if (progress?.task === task && progress.total === 0) setProgress(null);
+}
+
 async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  const task = LONG_TASKS[cmd];
   try {
     if (import.meta.env.DEV && !isTauri()) {
       const { mockInvoke } = await import("../dev/mock");
       return await mockInvoke<T>(cmd, args);
     }
-    return await invoke<T>(cmd, args);
+    // Show the indicator at once: the first progress event can take seconds while the SIA sessions open.
+    if (task) useUi.getState().setProgress({ task, done: 0, total: 0, current: "" });
+    const result = await invoke<T>(cmd, args);
+    // A task with nothing to do finishes without any event.
+    if (task) clearIfStarting(task);
+    return result;
   } catch (e) {
     // A task that fails midway never sends its final progress event: clear the indicator here.
-    if (LONG_TASKS.has(cmd)) useUi.getState().setProgress(null);
+    if (task) useUi.getState().setProgress(null);
     if (e && typeof e === "object" && "message" in e) throw new ApiError(e as CoreError);
     throw new ApiError({ kind: "external", message: String(e) });
   }

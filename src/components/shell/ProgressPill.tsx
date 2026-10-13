@@ -7,6 +7,8 @@ import { useUi } from "@/lib/store";
 import type { Progress } from "@/lib/types";
 
 const LABEL = { courses: "Consultando el SIA", plan: "Descargando prerrequisitos", google: "Exportando a Google Calendar" } as const;
+/** Shown while a task has started but sent no progress yet (`total` is 0). */
+const CONNECTING = { courses: "Conectando con el SIA…", plan: "Conectando con el SIA…", google: "Conectando con Google…" } as const;
 
 /** How long the finished state stays on screen before the indicator hides. */
 const FINISHED_VISIBLE_MS = 2000;
@@ -28,7 +30,7 @@ export function ProgressPill() {
   const setProgress = useUi((s) => s.setProgress);
   const minimized = useUi((s) => s.progressMinimized);
   const setMinimized = useUi((s) => s.setProgressMinimized);
-  const finished = !!progress && progress.done >= progress.total;
+  const finished = !!progress && isFinished(progress);
 
   useEffect(() => {
     if (!finished) return;
@@ -54,8 +56,12 @@ export function ProgressPill() {
   );
 }
 
+/** A task with `total` 0 has started but not reported its size yet. */
+const isStarting = (p: Progress) => p.total === 0;
+const isFinished = (p: Progress) => p.total > 0 && p.done >= p.total;
+
 function percent(p: Progress) {
-  return p.total ? Math.round((p.done / p.total) * 100) : 100;
+  return p.total ? Math.round((p.done / p.total) * 100) : 0;
 }
 
 function Pill({ progress, finished, onMinimize, onCancel }: { progress: Progress; finished: boolean; onMinimize: () => void; onCancel: () => void }) {
@@ -73,11 +79,15 @@ function Pill({ progress, finished, onMinimize, onCancel }: { progress: Progress
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2 text-[13px] font-medium">
               <span>{finished ? "Listo" : LABEL[progress.task]}</span>
-              <span className="tabular text-xs text-on-surface-variant">
-                {progress.done}/{progress.total}
-              </span>
+              {!isStarting(progress) && (
+                <span className="tabular text-xs text-on-surface-variant">
+                  {progress.done}/{progress.total}
+                </span>
+              )}
             </div>
-            {!finished && progress.current && <div className="truncate text-xs text-on-surface-variant">{progress.current}</div>}
+            {!finished && (
+              <div className="truncate text-xs text-on-surface-variant">{isStarting(progress) ? CONNECTING[progress.task] : progress.current}</div>
+            )}
           </div>
           <button onClick={onMinimize} className="rounded-lg p-1 text-on-surface-variant hover:bg-on-surface/5" aria-label="Minimizar" title="Minimizar">
             <Minimize2 className="size-4" />
@@ -89,7 +99,11 @@ function Pill({ progress, finished, onMinimize, onCancel }: { progress: Progress
           )}
         </div>
         <div className="h-1 bg-outline-variant/40">
-          <motion.div className="h-full bg-primary" animate={{ width: `${percent(progress)}%` }} transition={{ ease: "easeOut" }} />
+          {isStarting(progress) ? (
+            <div className="h-full w-full animate-pulse bg-primary/60" />
+          ) : (
+            <motion.div className="h-full bg-primary" animate={{ width: `${percent(progress)}%` }} transition={{ ease: "easeOut" }} />
+          )}
         </div>
       </div>
     </motion.div>
@@ -98,7 +112,11 @@ function Pill({ progress, finished, onMinimize, onCancel }: { progress: Progress
 
 function Badge({ progress, finished, onExpand }: { progress: Progress; finished: boolean; onExpand: () => void }) {
   const pct = percent(progress);
-  const label = finished ? "Tarea terminada" : `${LABEL[progress.task]}: ${pct} %. Clic para ver el detalle`;
+  const label = finished
+    ? "Tarea terminada"
+    : isStarting(progress)
+      ? `${CONNECTING[progress.task]} Clic para ver el detalle`
+      : `${LABEL[progress.task]}: ${pct} %. Clic para ver el detalle`;
   return (
     <motion.button
       data-above-dialogs
@@ -124,7 +142,13 @@ function Badge({ progress, finished, onExpand }: { progress: Progress; finished:
           strokeDashoffset={RING_LENGTH * (1 - pct / 100)}
         />
       </svg>
-      {finished ? <Check className="size-5 text-primary" strokeWidth={2.6} /> : <span className="tabular text-[11px] font-semibold">{pct}%</span>}
+      {finished ? (
+        <Check className="size-5 text-primary" strokeWidth={2.6} />
+      ) : isStarting(progress) ? (
+        <Loader2 className="size-4 animate-spin text-primary" />
+      ) : (
+        <span className="tabular text-[11px] font-semibold">{pct}%</span>
+      )}
     </motion.button>
   );
 }

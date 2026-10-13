@@ -8,7 +8,7 @@ interface UiState {
   preview: Selection[] | null;
   setPreview: (p: Selection[] | null) => void;
 
-  /** Latest progress of the running long task; `done >= total` means it just finished. */
+  /** Latest progress of the running long task: `total` 0 means it is starting, `done >= total` that it just finished. */
   progress: Progress | null;
   setProgress: (p: Progress | null) => void;
   /** The progress indicator is collapsed to a corner badge (kept for the session). */
