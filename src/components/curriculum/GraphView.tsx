@@ -8,6 +8,10 @@ const NODE_H = 58;
 const GAP_X = 92;
 const GAP_Y = 18;
 const PAD = 40;
+/** Courses and arrows unrelated to the hovered or selected course fade to this, but stay readable. */
+const DIM_OPACITY = 0.3;
+/** Arrows when nothing is highlighted, so the cards stay in front. */
+const IDLE_EDGE_OPACITY = 0.5;
 
 const TYPO_VAR: Record<string, string> = {
   fundamental: "--typ-fundamental",
@@ -206,7 +210,8 @@ export function GraphView({
                 d={d}
                 fill="none"
                 style={{ stroke: on ? "rgb(var(--primary))" : "rgb(var(--outline))" }}
-                strokeOpacity={lit ? (on ? 0.95 : 0.08) : 0.4}
+                // `opacity` (not `strokeOpacity`) so the arrowhead marker fades with its line.
+                opacity={lit ? (on ? 1 : DIM_OPACITY) : IDLE_EDGE_OPACITY}
                 strokeWidth={on ? 2 : 1.2}
                 strokeDasharray={coreq || !e.all ? "5 4" : undefined}
                 markerEnd={on ? "url(#arrow-lit)" : "url(#arrow)"}
@@ -252,7 +257,6 @@ function NodeCard({ n, dim, selected, onEnter, onLeave, onClick }: { n: Position
       y={n.y}
       width={NODE_W}
       height={NODE_H}
-      style={{ opacity: dim ? 0.22 : 1, transition: "opacity 150ms" }}
       onPointerEnter={onEnter}
       onPointerLeave={onLeave}
       onPointerDown={(e) => e.stopPropagation()}
@@ -267,6 +271,8 @@ function NodeCard({ n, dim, selected, onEnter, onLeave, onClick }: { n: Position
           external && "border-dashed border-outline bg-transparent shadow-none dark:bg-transparent",
           selected && "ring-2 ring-primary ring-offset-2 ring-offset-surface",
         )}
+        // Opacity on the card, not on the <foreignObject>: engines are less consistent with a translucent foreignObject.
+        style={{ opacity: dim ? DIM_OPACITY : 1 }}
       >
         {!external && <span className="w-1.5 shrink-0" style={{ background: color }} />}
         <div className="flex min-w-0 flex-1 flex-col justify-center px-2.5">
