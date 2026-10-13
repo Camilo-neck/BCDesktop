@@ -265,6 +265,16 @@ fn color_id(hex: &str) -> Option<&'static str> {
         .map(|(id, _)| *id)
 }
 
+/// Whether a failed Calendar API call may succeed if repeated. Google answers 403 both for
+/// usage limits (transient) and for missing permissions (permanent); only the body tells them apart.
+fn should_retry(status: u16, body: &str) -> bool {
+    match status {
+        429 | 500..=599 => true,
+        403 => body.to_ascii_lowercase().contains("ratelimitexceeded"),
+        _ => false,
+    }
+}
+
 async fn send_with_retry(req: impl Fn() -> reqwest::RequestBuilder) -> Result<Value> {
     let mut wait = Duration::from_millis(500);
     for attempt in 0..5 {
@@ -277,14 +287,12 @@ async fn send_with_retry(req: impl Fn() -> reqwest::RequestBuilder) -> Result<Va
                 res.json().await?
             });
         }
-        if (status.as_u16() == 429 || status.is_server_error() || status.as_u16() == 403)
-            && attempt < 4
-        {
+        let body = res.text().await.unwrap_or_default();
+        if should_retry(status.as_u16(), &body) && attempt < 4 {
             tokio::time::sleep(wait).await;
             wait *= 2;
             continue;
         }
-        let body = res.text().await.unwrap_or_default();
         return Err(Error::External(format!(
             "Google Calendar respondió {status}: {body}"
         )));
@@ -333,9 +341,6 @@ pub async fn export(
     for (i, e) in events.iter().enumerate() {
         on_progress(i, events.len());
         let first = e.first_date();
-        if first > e.until {
-            continue;
-        }
         let at = |m: u16| format!("{}T{}:00", first.format("%Y-%m-%d"), format_hhmm(m));
         let mut body = json!({
             "summary": e.summary,
@@ -382,6 +387,22 @@ mod tests {
         let (v, c) = pkce_pair();
         assert!(v.len() >= 43);
         assert_eq!(c, URL_SAFE_NO_PAD.encode(Sha256::digest(v.as_bytes())));
+    }
+
+    #[test]
+    fn retries_only_transient_failures() {
+        let quota = r#"{"error":{"code":403,"errors":[{"domain":"usageLimits","reason":"rateLimitExceeded"}]}}"#;
+        let user_quota = r#"{"error":{"errors":[{"reason":"userRateLimitExceeded"}]}}"#;
+        let forbidden =
+            r#"{"error":{"code":403,"errors":[{"domain":"global","reason":"forbidden"}]}}"#;
+        assert!(should_retry(429, ""));
+        assert!(should_retry(500, ""));
+        assert!(should_retry(503, ""));
+        assert!(should_retry(403, quota));
+        assert!(should_retry(403, user_quota));
+        assert!(!should_retry(403, forbidden));
+        assert!(!should_retry(401, ""));
+        assert!(!should_retry(404, ""));
     }
 
     #[test]

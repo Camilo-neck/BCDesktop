@@ -51,6 +51,7 @@ fn schedule_events(
     schedule_id: &str,
     term: Term,
 ) -> CmdResult<(Schedule, Vec<bc_core::integrations::CalendarEvent>)> {
+    term.validate()?;
     let db = state.db();
     let schedule = db
         .schedules()?
@@ -66,7 +67,7 @@ fn schedule_events(
     let events = events_for(&schedule, &courses, term, &|code| colors.get(code).cloned());
     if events.is_empty() {
         return Err(Error::Invalid(
-            "El horario no tiene clases para exportar.".into(),
+            "El horario no tiene clases entre las fechas del semestre.".into(),
         ));
     }
     Ok((schedule, events))

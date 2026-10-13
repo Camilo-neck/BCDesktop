@@ -8,6 +8,7 @@ pub mod stats;
 use chrono::{Datelike, NaiveDate};
 use serde::{Deserialize, Serialize};
 
+use crate::error::{Error, Result};
 use crate::model::{Course, Day};
 use crate::scheduler::Schedule;
 
@@ -52,6 +53,20 @@ fn yes() -> bool {
     true
 }
 
+impl Term {
+    pub fn validate(&self) -> Result<()> {
+        if self.until < self.from {
+            return Err(Error::Invalid(
+                "La fecha de fin del semestre es anterior a la de inicio.".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// One weekly event per class and personal block of `schedule`. Classes that never fall between
+/// their dates (a Thursday class in a Monday-to-Wednesday range) are left out, so exporters can
+/// write every event they receive.
 pub fn events_for(
     schedule: &Schedule,
     courses: &[Course],
@@ -112,6 +127,7 @@ pub fn events_for(
             color: None,
         });
     }
+    out.retain(|e| e.first_date() <= e.until);
     out
 }
 
@@ -136,5 +152,72 @@ mod tests {
             e.first_date(),
             NaiveDate::from_ymd_opt(2026, 8, 27).unwrap()
         );
+    }
+
+    fn date(d: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(2026, 8, d).unwrap()
+    }
+
+    fn term(from: u32, until: u32) -> Term {
+        Term {
+            from: date(from),
+            until: date(until),
+            use_group_dates: false,
+        }
+    }
+
+    #[test]
+    fn term_rejects_end_before_start() {
+        assert!(term(24, 24).validate().is_ok());
+        assert!(term(24, 30).validate().is_ok());
+        let err = term(30, 24).validate().unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "La fecha de fin del semestre es anterior a la de inicio."
+        );
+    }
+
+    #[test]
+    fn classes_that_never_happen_in_the_term_are_dropped() {
+        use crate::model::{CourseSource, Group, Session, Typology};
+        use crate::scheduler::Selection;
+
+        let session = |day| Session {
+            day,
+            start: 7 * 60,
+            end: 9 * 60,
+            room: String::new(),
+        };
+        let course = Course {
+            code: "A".into(),
+            name: "Curso A".into(),
+            credits: 3,
+            typology: Typology::Other,
+            groups: vec![Group {
+                id: "1".into(),
+                label: "Grupo 1".into(),
+                professors: vec![],
+                faculty: String::new(),
+                sessions: vec![session(Day::Tue), session(Day::Thu)],
+                duration: String::new(),
+                shift: String::new(),
+                spots: None,
+                starts_on: None,
+                ends_on: None,
+            }],
+            fetched_at: chrono::Utc::now(),
+            source: CourseSource::Sia,
+            career: None,
+        };
+        let mut schedule = Schedule::new("2026-2");
+        schedule.selections.push(Selection {
+            course_code: "A".into(),
+            group_id: "1".into(),
+        });
+
+        // Monday 24 to Wednesday 26: the Tuesday class happens, the Thursday one never does.
+        let events = events_for(&schedule, &[course], term(24, 26), &|_| None);
+        let days: Vec<Day> = events.iter().map(|e| e.day).collect();
+        assert_eq!(days, vec![Day::Tue]);
     }
 }
