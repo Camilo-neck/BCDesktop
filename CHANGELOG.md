@@ -8,6 +8,8 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 
 - Con «Fijar elegidos», el generador ya no deja fuera una materia fijada cuando no caben todas. Si dos materias fijadas se cruzan o el grupo fijado ya no se ofrece, lo indica con el motivo.
 - La ventana ya no se congela mientras se procesa la historia académica, se dibuja el plan de estudios, se exporta el calendario o se guardan datos.
+- Exportar con una fecha de fin del semestre anterior a la de inicio ya no crea un calendario vacío: la app avisa del error. También avisa si ninguna clase cae entre las fechas.
+- Exportar a Google Calendar ya no espera varios segundos para reintentar cuando Google niega el acceso; solo reintenta cuando el error es temporal.
 ### Cambiado
 
 - **Cambio de licencia:** el proyecto pasa de MIT a [PolyForm Noncommercial 1.0.0](LICENSE). El código sigue siendo público, pero cualquier uso comercial requiere autorización previa y por escrito de los mantenedores. Las versiones hasta la 0.1.0 siguen bajo MIT.
