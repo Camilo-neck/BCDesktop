@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 
@@ -7,8 +8,19 @@ use super::{Constraints, Preferences, Selection, TimeOfDay};
 use crate::model::{Course, Day};
 use crate::week::{gap_minutes, span, WeekMask, SLOT_MINUTES};
 
-/// Upper bound on search nodes; keeps the UI responsive on huge inputs.
-const NODE_BUDGET: u64 = 4_000_000;
+/// Longest a search may run; past it the best schedules found so far are returned.
+const TIME_BUDGET: Duration = Duration::from_secs(2);
+/// Nodes between two clock reads: reading it on every node would cost more than the node.
+const CLOCK_INTERVAL: u64 = 1024;
+
+// Score terms besides the student's weights. `Search::bound` relies on every term but gaps
+// only growing as courses are added: keep it that way when changing the score.
+const OFF_HOURS_WEIGHT: f64 = 0.5;
+const FAVORITE_BONUS: f64 = 1.5;
+/// Penalty of a group with no spots left; it shrinks as spots grow.
+const SCARCE_SPOTS_PENALTY: f64 = 10.0;
+/// Slack for float rounding: a branch is pruned only when its bound is clearly worse.
+const BOUND_MARGIN: f64 = 1e-6;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -65,15 +77,25 @@ pub struct GenerateResult {
     /// True when every schedulable course is in every result.
     pub complete: bool,
     pub explored: u64,
-    /// True when the node budget ran out before the search finished.
+    /// True when the time budget ran out before the search finished.
     pub truncated: bool,
 }
 
 struct Candidate {
     group_id: String,
     mask: WeekMask,
+    /// Busy days and busy slots per day of `mask`.
+    days: u8,
+    day_slots: [u32; 7],
+    /// Slots of `mask` outside the preferred time of day.
+    off_hours_slots: u32,
     spots: Option<u32>,
+    spot_penalty: f64,
     favorite: bool,
+}
+
+fn spot_penalty(spots: Option<u32>) -> f64 {
+    spots.map_or(0.0, |s| SCARCE_SPOTS_PENALTY / (1.0 + s as f64))
 }
 
 struct Slot {
@@ -136,6 +158,10 @@ fn empty_reason(course: &Course, locked: Option<&Selection>, mut filters: Vec<&s
 fn build_slots(req: &GenerateRequest) -> (Vec<Slot>, Vec<Unschedulable>) {
     let c = &req.constraints;
     let forbidden = forbidden_mask(c);
+    let off_hours = preferred_window(req.preferences.time_of_day)
+        .map_or(WeekMask::EMPTY, |(from, to)| {
+            WeekMask::outside_window(from, to)
+        });
     let excluded: HashSet<&Selection> = c.excluded.iter().collect();
     let favorites: HashSet<&Selection> = req.preferences.favorites.iter().collect();
     let mut slots = Vec::new();
@@ -180,10 +206,15 @@ fn build_slots(req: &GenerateRequest) -> (Vec<Slot>, Vec<Unschedulable>) {
                     course_code: course.code.clone(),
                     group_id: g.id.clone(),
                 };
+                let mask = WeekMask::from_sessions(&g.sessions);
                 Candidate {
                     group_id: g.id.clone(),
-                    mask: WeekMask::from_sessions(&g.sessions),
+                    mask,
+                    days: mask.days(),
+                    day_slots: mask.busy_slots_per_day(),
+                    off_hours_slots: mask.intersection_count(&off_hours),
                     spots: g.spots,
+                    spot_penalty: spot_penalty(g.spots),
                     favorite: favorites.contains(&sel),
                 }
             })
@@ -220,21 +251,6 @@ fn build_slots(req: &GenerateRequest) -> (Vec<Slot>, Vec<Unschedulable>) {
     (slots, unschedulable)
 }
 
-struct Search<'a> {
-    slots: &'a [Slot],
-    prefs: &'a Preferences,
-    max_credits: u32,
-    limit: usize,
-    allow_skip: bool,
-    best_count: usize,
-    heap: BinaryHeap<Ranked>,
-    chosen: Vec<Option<usize>>,
-    explored: u64,
-    truncated: bool,
-    /// Slots outside the preferred time of day, built once per search.
-    off_hours: Option<WeekMask>,
-}
-
 fn preferred_window(t: TimeOfDay) -> Option<(u16, u16)> {
     match t {
         TimeOfDay::Any => None,
@@ -244,46 +260,203 @@ fn preferred_window(t: TimeOfDay) -> Option<(u16, u16)> {
     }
 }
 
+/// What the courses from each depth on can still add, so a branch can be judged before it is
+/// explored. Index `i` covers the courses `i..`.
+struct Remaining {
+    /// How many have a favorite group.
+    favorites: Vec<u32>,
+    /// The least spot penalty they must add (none for a course the search may skip).
+    spot_penalty: Vec<f64>,
+    /// The most slots they can fill on each day.
+    day_slots: Vec<[u32; 7]>,
+    /// Their credits in ascending order, as running sums.
+    cheapest_credits: Vec<Vec<u32>>,
+}
+
+impl Remaining {
+    fn new(slots: &[Slot], allow_skip: bool) -> Remaining {
+        let n = slots.len();
+        let mut r = Remaining {
+            favorites: vec![0; n + 1],
+            spot_penalty: vec![0.0; n + 1],
+            day_slots: vec![[0; 7]; n + 1],
+            cheapest_credits: Vec::with_capacity(n + 1),
+        };
+        for (i, slot) in slots.iter().enumerate().rev() {
+            let cands = &slot.candidates;
+            r.favorites[i] = r.favorites[i + 1] + cands.iter().any(|c| c.favorite) as u32;
+            let least_penalty = if allow_skip && !slot.locked {
+                0.0
+            } else {
+                cands
+                    .iter()
+                    .map(|c| c.spot_penalty)
+                    .fold(f64::INFINITY, f64::min)
+            };
+            r.spot_penalty[i] = r.spot_penalty[i + 1] + least_penalty;
+            let mut day_slots = r.day_slots[i + 1];
+            for (d, most) in day_slots.iter_mut().enumerate() {
+                *most += cands.iter().map(|c| c.day_slots[d]).max().unwrap_or(0);
+            }
+            r.day_slots[i] = day_slots;
+        }
+        for i in 0..=n {
+            let mut credits: Vec<u32> = slots[i..].iter().map(|s| s.credits).collect();
+            credits.sort_unstable();
+            let running = credits.iter().scan(0, |sum, c| {
+                *sum += c;
+                Some(*sum)
+            });
+            r.cheapest_credits.push(running.collect());
+        }
+        r
+    }
+}
+
+/// The choice so far, with the running totals the score and the bound need. Candidates in a
+/// choice never overlap, so slot counts add up.
+#[derive(Clone, Copy)]
+struct Partial {
+    mask: WeekMask,
+    credits: u32,
+    included: usize,
+    days: u8,
+    off_hours_slots: u32,
+    favorites: u32,
+    spot_penalty: f64,
+}
+
+impl Partial {
+    const EMPTY: Partial = Partial {
+        mask: WeekMask::EMPTY,
+        credits: 0,
+        included: 0,
+        days: 0,
+        off_hours_slots: 0,
+        favorites: 0,
+        spot_penalty: 0.0,
+    };
+
+    fn with(&self, cand: &Candidate, credits: u32) -> Partial {
+        Partial {
+            mask: self.mask.union(&cand.mask),
+            credits: self.credits + credits,
+            included: self.included + 1,
+            days: self.days | cand.days,
+            off_hours_slots: self.off_hours_slots + cand.off_hours_slots,
+            favorites: self.favorites + cand.favorite as u32,
+            spot_penalty: self.spot_penalty + cand.spot_penalty,
+        }
+    }
+}
+
+/// The terms of a schedule's score, before weighting.
+struct ScoreTerms {
+    gap_minutes: u32,
+    days: u32,
+    off_hours_slots: u32,
+    favorites: u32,
+    spot_penalty: f64,
+}
+
+struct Search<'a> {
+    slots: &'a [Slot],
+    prefs: &'a Preferences,
+    remaining: Remaining,
+    /// The bound assumes no weight rewards a worse term; a negative weight turns pruning off.
+    prunable: bool,
+    max_credits: u32,
+    limit: usize,
+    allow_skip: bool,
+    best_count: usize,
+    heap: BinaryHeap<Ranked>,
+    chosen: Vec<Option<usize>>,
+    explored: u64,
+    truncated: bool,
+    deadline: Instant,
+}
+
 impl Search<'_> {
+    /// Lower score is better.
+    fn weigh(&self, t: &ScoreTerms) -> f64 {
+        self.prefs.gaps * t.gap_minutes as f64 / 60.0
+            + self.prefs.days * t.days as f64
+            + OFF_HOURS_WEIGHT * (t.off_hours_slots as f64 * SLOT_MINUTES as f64 / 60.0)
+            - FAVORITE_BONUS * t.favorites as f64
+            + self.prefs.spots * t.spot_penalty
+    }
+
     /// Score and metrics of the current choice. Allocates nothing: it runs for every complete
     /// schedule the search reaches, and most of them are discarded.
-    fn score(&self, mask: &WeekMask) -> (f64, Metrics) {
-        let mut credits = 0;
-        let mut favorites = 0;
-        let mut min_spots: Option<u32> = None;
-        let mut spot_penalty = 0.0;
-        for (slot, pick) in self.slots.iter().zip(&self.chosen) {
-            let Some(i) = pick else { continue };
-            let cand = &slot.candidates[*i];
-            credits += slot.credits;
-            favorites += cand.favorite as u32;
-            if let Some(s) = cand.spots {
-                min_spots = Some(min_spots.map_or(s, |m| m.min(s)));
-                spot_penalty += 10.0 / (1.0 + s as f64);
-            }
-        }
-        let gaps = gap_minutes(mask);
-        let days = mask.days().count_ones() as u8;
-        let (earliest, latest) = span(mask).unwrap_or((0, 0));
-        let off_hours = self
-            .off_hours
-            .map(|outside| mask.intersection_count(&outside) as f64 * SLOT_MINUTES as f64 / 60.0)
-            .unwrap_or(0.0);
-
-        let score =
-            self.prefs.gaps * gaps as f64 / 60.0 + self.prefs.days * days as f64 + 0.5 * off_hours
-                - 1.5 * favorites as f64
-                + self.prefs.spots * spot_penalty;
+    fn score(&self, p: &Partial) -> (f64, Metrics) {
+        let min_spots = self
+            .slots
+            .iter()
+            .zip(&self.chosen)
+            .filter_map(|(slot, pick)| slot.candidates[(*pick)?].spots)
+            .min();
+        let gaps = gap_minutes(&p.mask);
+        let (earliest, latest) = span(&p.mask).unwrap_or((0, 0));
+        let score = self.weigh(&ScoreTerms {
+            gap_minutes: gaps,
+            days: p.days.count_ones(),
+            off_hours_slots: p.off_hours_slots,
+            favorites: p.favorites,
+            spot_penalty: p.spot_penalty,
+        });
         let metrics = Metrics {
             gap_minutes: gaps,
-            days,
-            credits,
+            days: p.days.count_ones() as u8,
+            credits: p.credits,
             earliest,
             latest,
-            favorites,
+            favorites: p.favorites,
             min_spots,
         };
         ((score * 100.0).round() / 100.0, metrics)
+    }
+
+    /// A score no schedule completed from `p` at depth `i` can beat. Days, off-hours slots and
+    /// spot penalties only grow as courses are added, and favorites grow at most by the courses
+    /// left that have one. Gaps can shrink, but on each day at most by the slots the courses left
+    /// can fill there.
+    fn bound(&self, i: usize, p: &Partial) -> f64 {
+        let r = &self.remaining;
+        let gap_slots: u32 = p
+            .mask
+            .gap_slots_per_day()
+            .iter()
+            .zip(&r.day_slots[i])
+            .map(|(gap, fillable)| gap.saturating_sub(*fillable))
+            .sum();
+        self.weigh(&ScoreTerms {
+            gap_minutes: gap_slots * SLOT_MINUTES as u32,
+            days: p.days.count_ones(),
+            off_hours_slots: p.off_hours_slots,
+            favorites: p.favorites + r.favorites[i],
+            spot_penalty: p.spot_penalty + r.spot_penalty[i],
+        })
+    }
+
+    /// The most courses a schedule completed from `p` at depth `i` can hold: the ones left,
+    /// cheapest first, while they fit under the credit cap.
+    fn reachable(&self, i: usize, p: &Partial) -> usize {
+        let room = self.max_credits.saturating_sub(p.credits);
+        p.included + self.remaining.cheapest_credits[i].partition_point(|c| *c <= room)
+    }
+
+    /// True when `limit` schedules are kept and nothing reachable from `p` can enter them.
+    fn cannot_improve(&self, i: usize, p: &Partial, reachable: usize) -> bool {
+        // A branch that may include more courses would replace every kept schedule.
+        if !self.prunable || self.heap.len() < self.limit || reachable > self.best_count {
+            return false;
+        }
+        let worst = self
+            .heap
+            .peek()
+            .expect("the heap holds `limit` schedules")
+            .0;
+        self.bound(i, p) > worst + BOUND_MARGIN
     }
 
     /// The full result for the current choice, copying the course and group ids it lists.
@@ -307,15 +480,15 @@ impl Search<'_> {
         }
     }
 
-    fn record(&mut self, mask: &WeekMask, included: usize) {
-        if included < self.best_count {
+    fn record(&mut self, p: &Partial) {
+        if p.included < self.best_count {
             return;
         }
-        if included > self.best_count {
-            self.best_count = included;
+        if p.included > self.best_count {
+            self.best_count = p.included;
             self.heap.clear();
         }
-        let (score, metrics) = self.score(mask);
+        let (score, metrics) = self.score(p);
         // Once `limit` schedules are kept, only one better than the worst of them gets built.
         if self.heap.len() >= self.limit {
             if !self.heap.peek().is_some_and(|worst| score < worst.0) {
@@ -327,39 +500,43 @@ impl Search<'_> {
         self.heap.push(Ranked(score, built));
     }
 
-    fn dfs(&mut self, i: usize, mask: WeekMask, credits: u32, included: usize) {
+    fn out_of_time(&mut self) -> bool {
         self.explored += 1;
-        if self.explored > NODE_BUDGET {
+        if self.explored.is_multiple_of(CLOCK_INTERVAL) && Instant::now() >= self.deadline {
             self.truncated = true;
+        }
+        self.truncated
+    }
+
+    /// Depth-first over the courses: stop when time runs out, record a complete choice, prune a
+    /// branch that can't hold enough courses or beat the kept schedules, then try each group that
+    /// fits and, when allowed, leaving the course out.
+    fn dfs(&mut self, i: usize, p: Partial) {
+        if self.out_of_time() {
             return;
         }
         if i == self.slots.len() {
-            self.record(&mask, included);
+            self.record(&p);
             return;
         }
-        // Not enough courses left to beat the best partial result.
-        if self.allow_skip && included + (self.slots.len() - i) < self.best_count {
+        let reachable = self.reachable(i, &p);
+        if reachable < self.best_count || self.cannot_improve(i, &p, reachable) {
             return;
         }
         let slot = &self.slots[i];
         for (ci, cand) in slot.candidates.iter().enumerate() {
-            if cand.mask.intersects(&mask) || credits + slot.credits > self.max_credits {
+            if cand.mask.intersects(&p.mask) || p.credits + slot.credits > self.max_credits {
                 continue;
             }
             self.chosen[i] = Some(ci);
-            self.dfs(
-                i + 1,
-                mask.union(&cand.mask),
-                credits + slot.credits,
-                included + 1,
-            );
+            self.dfs(i + 1, p.with(cand, slot.credits));
             if self.truncated {
                 return;
             }
         }
         self.chosen[i] = None;
         if self.allow_skip && !slot.locked {
-            self.dfs(i + 1, mask, credits, included);
+            self.dfs(i + 1, p);
         }
     }
 
@@ -367,10 +544,14 @@ impl Search<'_> {
         slots: &[Slot],
         req: &GenerateRequest,
         allow_skip: bool,
+        deadline: Instant,
     ) -> (Vec<GeneratedSchedule>, u64, bool) {
+        let prefs = &req.preferences;
         let mut s = Search {
             slots,
-            prefs: &req.preferences,
+            prefs,
+            remaining: Remaining::new(slots, allow_skip),
+            prunable: prefs.gaps >= 0.0 && prefs.days >= 0.0 && prefs.spots >= 0.0,
             max_credits: req
                 .constraints
                 .max_credits
@@ -383,10 +564,9 @@ impl Search<'_> {
             chosen: vec![None; slots.len()],
             explored: 0,
             truncated: false,
-            off_hours: preferred_window(req.preferences.time_of_day)
-                .map(|(from, to)| WeekMask::outside_window(from, to)),
+            deadline,
         };
-        s.dfs(0, WeekMask::EMPTY, 0, 0);
+        s.dfs(0, Partial::EMPTY);
         let mut out: Vec<_> = s.heap.into_vec().into_iter().map(|r| r.1).collect();
         out.sort_by(|a, b| a.score.total_cmp(&b.score));
         (out, s.explored, s.truncated)
@@ -394,6 +574,11 @@ impl Search<'_> {
 }
 
 pub fn generate(req: &GenerateRequest) -> GenerateResult {
+    generate_until(req, Instant::now() + TIME_BUDGET)
+}
+
+/// `generate` with the time limit as an argument, so tests can run out of time on purpose.
+fn generate_until(req: &GenerateRequest, deadline: Instant) -> GenerateResult {
     let (slots, unschedulable) = build_slots(req);
     if slots.is_empty() {
         return GenerateResult {
@@ -404,7 +589,7 @@ pub fn generate(req: &GenerateRequest) -> GenerateResult {
             truncated: false,
         };
     }
-    let (full, explored, truncated) = Search::run(&slots, req, false);
+    let (full, explored, truncated) = Search::run(&slots, req, false, deadline);
     if !full.is_empty() {
         return GenerateResult {
             schedules: full,
@@ -414,7 +599,7 @@ pub fn generate(req: &GenerateRequest) -> GenerateResult {
             truncated,
         };
     }
-    let (partial, explored2, truncated2) = Search::run(&slots, req, true);
+    let (partial, explored2, truncated2) = Search::run(&slots, req, true, deadline);
     GenerateResult {
         schedules: partial,
         unschedulable,
@@ -570,6 +755,22 @@ mod tests {
     }
 
     #[test]
+    fn courses_that_fill_the_credit_cap_exactly_fit() {
+        let mut r = req(vec![
+            course("A", 4, vec![group("1", &[(Day::Mon, 7, 9)], None)]),
+            course("B", 3, vec![group("1", &[(Day::Tue, 7, 9)], None)]),
+            course("C", 3, vec![group("1", &[(Day::Wed, 7, 9)], None)]),
+        ]);
+        r.constraints.max_credits = Some(10);
+        assert!(generate(&r).complete);
+        r.constraints.max_credits = Some(7);
+        let out = generate(&r);
+        assert!(!out.complete);
+        assert!(out.schedules.iter().all(|s| s.selections.len() == 2));
+        assert_eq!(out.schedules.len(), 3);
+    }
+
+    #[test]
     fn maximises_courses_when_some_collide() {
         let r = req(vec![
             course("A", 3, vec![group("1", &[(Day::Mon, 7, 9)], None)]),
@@ -665,5 +866,102 @@ mod tests {
             out.unschedulable[0].reason,
             "El grupo 99 que fijaste ya no se ofrece"
         );
+    }
+
+    #[test]
+    fn running_out_of_time_returns_the_best_found_so_far() {
+        // 12 groups per course on separate hours: 12^3 complete schedules, more nodes than one
+        // clock interval.
+        let courses = Day::ALL[..3]
+            .iter()
+            .enumerate()
+            .map(|(k, day)| {
+                let groups = (0..12)
+                    .map(|h| group(&h.to_string(), &[(*day, 6 + h, 7 + h)], None))
+                    .collect();
+                course(&k.to_string(), 3, groups)
+            })
+            .collect();
+        let out = generate_until(&req(courses), Instant::now());
+        assert!(out.truncated);
+        assert!(!out.schedules.is_empty());
+        assert_eq!(out.explored, CLOCK_INTERVAL);
+    }
+
+    /// Deterministic xorshift numbers: the same inputs on every run, without a dependency.
+    struct Rng(u64);
+
+    impl Rng {
+        fn below(&mut self, n: u64) -> u64 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 7;
+            self.0 ^= self.0 << 17;
+            self.0 % n
+        }
+    }
+
+    /// Four courses of one to four groups with one or two random sessions: at most 256
+    /// schedules, so a limit of 500 keeps all of them and never prunes.
+    fn random_courses(rng: &mut Rng) -> Vec<Course> {
+        (0..4)
+            .map(|k| {
+                let groups = (0..1 + rng.below(4))
+                    .map(|g| {
+                        let sessions: Vec<_> = (0..1 + rng.below(2))
+                            .map(|_| {
+                                let start = 6 + rng.below(14) as u16;
+                                (
+                                    Day::ALL[rng.below(6) as usize],
+                                    start,
+                                    start + 1 + rng.below(3) as u16,
+                                )
+                            })
+                            .collect();
+                        let spots = (rng.below(3) > 0).then(|| rng.below(30) as u32);
+                        group(&g.to_string(), &sessions, spots)
+                    })
+                    .collect();
+                course(&k.to_string(), 2 + rng.below(3) as u8, groups)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn pruning_keeps_the_best_schedules() {
+        let mut rng = Rng(0x9E37_79B9_7F4A_7C15);
+        let times = [
+            TimeOfDay::Any,
+            TimeOfDay::Morning,
+            TimeOfDay::Afternoon,
+            TimeOfDay::Evening,
+        ];
+        let (mut pruned_nodes, mut all_nodes) = (0, 0);
+        for case in 0..200 {
+            let mut r = req(random_courses(&mut rng));
+            r.preferences.gaps = [0.0, 1.0, 3.0][case % 3];
+            r.preferences.days = [3.0, 0.0, 1.0][case % 3];
+            r.preferences.time_of_day = times[case % 4];
+            r.preferences.spots = [0.3, 3.0][case % 2];
+            r.preferences.favorites = r
+                .courses
+                .iter()
+                .filter(|_| rng.below(2) == 0)
+                .map(|c| lock(&c.code, "0"))
+                .collect();
+            r.constraints.max_credits = [None, Some(6), Some(9)][case % 3];
+            r.limit = 500;
+            let all = generate(&r);
+            r.limit = 5;
+            let pruned = generate(&r);
+
+            let best: Vec<f64> = all.schedules.iter().take(5).map(|s| s.score).collect();
+            let kept: Vec<f64> = pruned.schedules.iter().map(|s| s.score).collect();
+            assert_eq!(kept, best, "case {case}");
+            assert_eq!(pruned.complete, all.complete, "case {case}");
+            pruned_nodes += pruned.explored;
+            all_nodes += all.explored;
+        }
+        // The comparison above means nothing if the bound never prunes.
+        assert!(pruned_nodes < all_nodes, "{pruned_nodes} of {all_nodes}");
     }
 }

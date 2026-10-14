@@ -117,6 +117,16 @@ impl WeekMask {
         out
     }
 
+    /// Busy slots on each day (index 0 = Monday).
+    pub fn busy_slots_per_day(&self) -> [u32; 7] {
+        Day::ALL.map(|d| self.day_extent(d).map_or(0, |e| e.busy))
+    }
+
+    /// Idle slots between the first and last class of each day (index 0 = Monday).
+    pub fn gap_slots_per_day(&self) -> [u32; 7] {
+        Day::ALL.map(|d| self.day_extent(d).map_or(0, |e| e.gap_slots()))
+    }
+
     /// First and last busy slot of `day` and how many slots are busy, or `None` for a free day.
     /// Reads whole words instead of single bits: the generator calls it for every schedule it scores.
     fn day_extent(&self, day: Day) -> Option<DayExtent> {
@@ -153,14 +163,15 @@ struct DayExtent {
     busy: u32,
 }
 
+impl DayExtent {
+    fn gap_slots(&self) -> u32 {
+        (self.last - self.first + 1) as u32 - self.busy
+    }
+}
+
 /// Idle minutes between the first and last class of each day, summed over the week.
 pub fn gap_minutes(mask: &WeekMask) -> u32 {
-    Day::ALL
-        .iter()
-        .filter_map(|d| mask.day_extent(*d))
-        .map(|e| (e.last - e.first + 1) as u32 - e.busy)
-        .sum::<u32>()
-        * SLOT_MINUTES as u32
+    mask.gap_slots_per_day().iter().sum::<u32>() * SLOT_MINUTES as u32
 }
 
 /// Earliest start and latest end over the week, in minutes.
