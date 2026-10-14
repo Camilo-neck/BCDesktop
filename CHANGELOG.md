@@ -14,6 +14,7 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 - El tutorial de «Agregar asignaturas» ya se puede avanzar y cerrar, y los clics ya no atraviesan su fondo hacia la ventana de atrás.
 - Un clic fuera de la tarjeta ya no salta el tutorial. Al omitirlo, la app indica dónde repetirlo.
 - La app ya no parpadea al cambiar de sección, y los datos y gráficos de «Mi avance» ya no parpadean al abrirla.
+- El generador de horarios es unas 20 veces más rápido: con asignaturas de muchos grupos ya no tarda más de 10 segundos en mostrar las opciones.
 
 ### Cambiado
 

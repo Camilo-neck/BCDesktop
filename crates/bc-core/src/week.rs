@@ -110,45 +110,65 @@ impl WeekMask {
     pub fn days(&self) -> u8 {
         let mut out = 0u8;
         for d in Day::ALL {
-            if self.day_slots(d).any(|b| b) {
+            if self.day_extent(d).is_some() {
                 out |= 1 << d.index();
             }
         }
         out
     }
+
+    /// First and last busy slot of `day` and how many slots are busy, or `None` for a free day.
+    /// Reads whole words instead of single bits: the generator calls it for every schedule it scores.
+    fn day_extent(&self, day: Day) -> Option<DayExtent> {
+        let start = day.index() * SLOTS_PER_DAY;
+        let end = start + SLOTS_PER_DAY;
+        let mut extent: Option<DayExtent> = None;
+        let mut bit = start;
+        while bit < end {
+            // The day's bits that live in this word, shifted down to bit 0.
+            let offset = bit % 64;
+            let len = (64 - offset).min(end - bit);
+            let chunk = (self.0[bit / 64] >> offset) & (u64::MAX >> (64 - len));
+            if chunk != 0 {
+                let first = bit - start + chunk.trailing_zeros() as usize;
+                let last = bit - start + 63 - chunk.leading_zeros() as usize;
+                let e = extent.get_or_insert(DayExtent {
+                    first,
+                    last,
+                    busy: 0,
+                });
+                e.last = last;
+                e.busy += chunk.count_ones();
+            }
+            bit += len;
+        }
+        extent
+    }
+}
+
+/// Busy slots of one day: first and last (inclusive, as slot indexes in the day) and their count.
+struct DayExtent {
+    first: usize,
+    last: usize,
+    busy: u32,
 }
 
 /// Idle minutes between the first and last class of each day, summed over the week.
 pub fn gap_minutes(mask: &WeekMask) -> u32 {
-    let mut total = 0u32;
-    for d in Day::ALL {
-        let slots: Vec<bool> = mask.day_slots(d).collect();
-        let (Some(first), Some(last)) = (
-            slots.iter().position(|b| *b),
-            slots.iter().rposition(|b| *b),
-        ) else {
-            continue;
-        };
-        let busy = slots[first..=last].iter().filter(|b| **b).count();
-        total += ((last - first + 1 - busy) as u32) * SLOT_MINUTES as u32;
-    }
-    total
+    Day::ALL
+        .iter()
+        .filter_map(|d| mask.day_extent(*d))
+        .map(|e| (e.last - e.first + 1) as u32 - e.busy)
+        .sum::<u32>()
+        * SLOT_MINUTES as u32
 }
 
 /// Earliest start and latest end over the week, in minutes.
 pub fn span(mask: &WeekMask) -> Option<(u16, u16)> {
-    let mut lo = usize::MAX;
-    let mut hi = 0usize;
-    for d in Day::ALL {
-        let slots: Vec<bool> = mask.day_slots(d).collect();
-        if let (Some(f), Some(l)) = (
-            slots.iter().position(|b| *b),
-            slots.iter().rposition(|b| *b),
-        ) {
-            lo = lo.min(f);
-            hi = hi.max(l + 1);
-        }
-    }
+    let extents = Day::ALL.iter().filter_map(|d| mask.day_extent(*d));
+    let (lo, hi) = extents.fold((usize::MAX, 0), |(lo, hi), e| {
+        (lo.min(e.first), hi.max(e.last + 1))
+    });
     (lo != usize::MAX).then(|| (lo as u16 * SLOT_MINUTES, hi as u16 * SLOT_MINUTES))
 }
 
@@ -190,5 +210,62 @@ mod tests {
         let outside = WeekMask::outside_window(7 * 60, 18 * 60);
         assert!(!outside.intersects(&WeekMask::from_sessions(&[s(Day::Fri, 7, 18)])));
         assert!(outside.intersects(&WeekMask::from_sessions(&[s(Day::Fri, 17, 19)])));
+    }
+
+    fn minutes(day: Day, start: u16, end: u16) -> Session {
+        Session {
+            day,
+            start,
+            end,
+            room: String::new(),
+        }
+    }
+
+    /// Reference values computed slot by slot: gaps, span and busy days.
+    fn scanned_metrics(m: &WeekMask) -> (u32, Option<(u16, u16)>, u8) {
+        let (mut gaps, mut lo, mut hi, mut days) = (0, usize::MAX, 0, 0u8);
+        for d in Day::ALL {
+            let slots: Vec<bool> = m.day_slots(d).collect();
+            let (Some(first), Some(last)) = (
+                slots.iter().position(|b| *b),
+                slots.iter().rposition(|b| *b),
+            ) else {
+                continue;
+            };
+            let busy = slots[first..=last].iter().filter(|b| **b).count();
+            gaps += (last - first + 1 - busy) as u32 * SLOT_MINUTES as u32;
+            lo = lo.min(first);
+            hi = hi.max(last + 1);
+            days |= 1 << d.index();
+        }
+        let span = (lo != usize::MAX).then(|| (lo as u16 * SLOT_MINUTES, hi as u16 * SLOT_MINUTES));
+        (gaps, span, days)
+    }
+
+    #[test]
+    fn bitwise_week_metrics_match_the_slot_scan() {
+        let weeks = [
+            vec![],
+            vec![s(Day::Mon, 7, 9), s(Day::Mon, 11, 13), s(Day::Wed, 14, 16)],
+            // First and last slot of a day.
+            vec![s(Day::Tue, 0, 1), s(Day::Tue, 23, 24)],
+            // Last day of the week, with touching sessions.
+            vec![s(Day::Sun, 7, 9), s(Day::Sun, 9, 11)],
+            // Thursday 2:00 to 4:00 crosses the boundary between two 64-bit words.
+            vec![minutes(Day::Thu, 120, 240), minutes(Day::Thu, 300, 310)],
+            // Partial slots and every day busy.
+            Day::ALL
+                .iter()
+                .map(|d| minutes(*d, 7 * 60 + 5, 21 * 60 + 55))
+                .collect(),
+        ];
+        for sessions in weeks {
+            let m = WeekMask::from_sessions(&sessions);
+            assert_eq!(
+                (gap_minutes(&m), span(&m), m.days()),
+                scanned_metrics(&m),
+                "{sessions:?}"
+            );
+        }
     }
 }

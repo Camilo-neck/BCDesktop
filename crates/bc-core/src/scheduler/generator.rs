@@ -231,6 +231,8 @@ struct Search<'a> {
     chosen: Vec<Option<usize>>,
     explored: u64,
     truncated: bool,
+    /// Slots outside the preferred time of day, built once per search.
+    off_hours: Option<WeekMask>,
 }
 
 fn preferred_window(t: TimeOfDay) -> Option<(u16, u16)> {
@@ -243,60 +245,65 @@ fn preferred_window(t: TimeOfDay) -> Option<(u16, u16)> {
 }
 
 impl Search<'_> {
-    fn evaluate(&self, mask: &WeekMask) -> GeneratedSchedule {
-        let mut selections = Vec::new();
-        let mut omitted = Vec::new();
+    /// Score and metrics of the current choice. Allocates nothing: it runs for every complete
+    /// schedule the search reaches, and most of them are discarded.
+    fn score(&self, mask: &WeekMask) -> (f64, Metrics) {
         let mut credits = 0;
         let mut favorites = 0;
         let mut min_spots: Option<u32> = None;
         let mut spot_penalty = 0.0;
         for (slot, pick) in self.slots.iter().zip(&self.chosen) {
-            match pick {
-                Some(i) => {
-                    let cand = &slot.candidates[*i];
-                    selections.push(Selection {
-                        course_code: slot.code.clone(),
-                        group_id: cand.group_id.clone(),
-                    });
-                    credits += slot.credits;
-                    favorites += cand.favorite as u32;
-                    if let Some(s) = cand.spots {
-                        min_spots = Some(min_spots.map_or(s, |m| m.min(s)));
-                        spot_penalty += 10.0 / (1.0 + s as f64);
-                    }
-                }
-                None => omitted.push(slot.code.clone()),
+            let Some(i) = pick else { continue };
+            let cand = &slot.candidates[*i];
+            credits += slot.credits;
+            favorites += cand.favorite as u32;
+            if let Some(s) = cand.spots {
+                min_spots = Some(min_spots.map_or(s, |m| m.min(s)));
+                spot_penalty += 10.0 / (1.0 + s as f64);
             }
         }
         let gaps = gap_minutes(mask);
         let days = mask.days().count_ones() as u8;
         let (earliest, latest) = span(mask).unwrap_or((0, 0));
-        let off_hours = preferred_window(self.prefs.time_of_day)
-            .map(|(a, b)| {
-                mask.intersection_count(&WeekMask::outside_window(a, b)) as f64
-                    * SLOT_MINUTES as f64
-                    / 60.0
-            })
+        let off_hours = self
+            .off_hours
+            .map(|outside| mask.intersection_count(&outside) as f64 * SLOT_MINUTES as f64 / 60.0)
             .unwrap_or(0.0);
 
         let score =
             self.prefs.gaps * gaps as f64 / 60.0 + self.prefs.days * days as f64 + 0.5 * off_hours
                 - 1.5 * favorites as f64
                 + self.prefs.spots * spot_penalty;
+        let metrics = Metrics {
+            gap_minutes: gaps,
+            days,
+            credits,
+            earliest,
+            latest,
+            favorites,
+            min_spots,
+        };
+        ((score * 100.0).round() / 100.0, metrics)
+    }
 
+    /// The full result for the current choice, copying the course and group ids it lists.
+    fn schedule(&self, score: f64, metrics: Metrics) -> GeneratedSchedule {
+        let mut selections = Vec::new();
+        let mut omitted = Vec::new();
+        for (slot, pick) in self.slots.iter().zip(&self.chosen) {
+            match pick {
+                Some(i) => selections.push(Selection {
+                    course_code: slot.code.clone(),
+                    group_id: slot.candidates[*i].group_id.clone(),
+                }),
+                None => omitted.push(slot.code.clone()),
+            }
+        }
         GeneratedSchedule {
             selections,
             omitted,
-            score: (score * 100.0).round() / 100.0,
-            metrics: Metrics {
-                gap_minutes: gaps,
-                days,
-                credits,
-                earliest,
-                latest,
-                favorites,
-                min_spots,
-            },
+            score,
+            metrics,
         }
     }
 
@@ -308,13 +315,16 @@ impl Search<'_> {
             self.best_count = included;
             self.heap.clear();
         }
-        let s = self.evaluate(mask);
-        if self.heap.len() < self.limit {
-            self.heap.push(Ranked(s.score, s));
-        } else if self.heap.peek().is_some_and(|w| s.score < w.0) {
+        let (score, metrics) = self.score(mask);
+        // Once `limit` schedules are kept, only one better than the worst of them gets built.
+        if self.heap.len() >= self.limit {
+            if !self.heap.peek().is_some_and(|worst| score < worst.0) {
+                return;
+            }
             self.heap.pop();
-            self.heap.push(Ranked(s.score, s));
         }
+        let built = self.schedule(score, metrics);
+        self.heap.push(Ranked(score, built));
     }
 
     fn dfs(&mut self, i: usize, mask: WeekMask, credits: u32, included: usize) {
@@ -373,6 +383,8 @@ impl Search<'_> {
             chosen: vec![None; slots.len()],
             explored: 0,
             truncated: false,
+            off_hours: preferred_window(req.preferences.time_of_day)
+                .map(|(from, to)| WeekMask::outside_window(from, to)),
         };
         s.dfs(0, WeekMask::EMPTY, 0, 0);
         let mut out: Vec<_> = s.heap.into_vec().into_iter().map(|r| r.1).collect();
