@@ -24,7 +24,8 @@ const FILTERS: { label: string; match: Typology[] }[] = [
 ];
 
 export function AddCoursesDialog() {
-  const { addCoursesOpen: open, setAddCoursesOpen: setOpen } = useUi();
+  const open = useUi((s) => s.addCoursesOpen);
+  const setOpen = useUi((s) => s.setAddCoursesOpen);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="h-[min(88vh,720px)] w-[min(94vw,1000px)] overflow-hidden">{open && <Body onDone={() => setOpen(false)} />}</DialogContent>

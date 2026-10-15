@@ -34,7 +34,9 @@ export function LibraryPanel({ onManual }: { onManual: (code?: string) => void }
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const { setAddCoursesOpen, focusedCourse, setFocusedCourse } = useUi();
+  const setAddCoursesOpen = useUi((s) => s.setAddCoursesOpen);
+  const focusedCourse = useUi((s) => s.focusedCourse);
+  const setFocusedCourse = useUi((s) => s.setFocusedCourse);
   const qc = useQueryClient();
 
   useEffect(() => {
@@ -297,7 +299,8 @@ function CourseItem({
 function GroupRow({ courseCode, group, selected }: { courseCode: string; group: Group; selected: boolean }) {
   const editor = useScheduleEditor();
   const actions = useLibraryActions();
-  const { setPreview, setGroupDetail } = useUi();
+  const setPreview = useUi((s) => s.setPreview);
+  const setGroupDetail = useUi((s) => s.setGroupDetail);
   const sel = { courseCode, groupId: group.id };
   const fav = editor.index.favorites.has(selKey(sel));
   const clashes = selected ? [] : editor.conflictsWith(courseCode, group);

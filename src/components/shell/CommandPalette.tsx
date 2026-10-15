@@ -41,7 +41,12 @@ const groupClass =
 
 export function CommandPalette() {
   const navigate = useNavigate();
-  const { paletteOpen, setPaletteOpen, setAddCoursesOpen, setGeneratorOpen, setExportOpen, setFocusedCourse } = useUi();
+  const paletteOpen = useUi((s) => s.paletteOpen);
+  const setPaletteOpen = useUi((s) => s.setPaletteOpen);
+  const setAddCoursesOpen = useUi((s) => s.setAddCoursesOpen);
+  const setGeneratorOpen = useUi((s) => s.setGeneratorOpen);
+  const setExportOpen = useUi((s) => s.setExportOpen);
+  const setFocusedCourse = useUi((s) => s.setFocusedCourse);
   const index = useLibraryIndex();
   const editor = useScheduleEditor();
   const { theme } = useSettings();

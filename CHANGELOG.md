@@ -14,6 +14,7 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 - El tutorial de «Agregar asignaturas» ya se puede avanzar y cerrar, y los clics ya no atraviesan su fondo hacia la ventana de atrás.
 - Un clic fuera de la tarjeta ya no salta el tutorial. Al omitirlo, la app indica dónde repetirlo.
 - La app ya no parpadea al cambiar de sección, y los datos y gráficos de «Mi avance» ya no parpadean al abrirla.
+- La app ya no se congela al pasar el mouse por las opciones del generador de horarios ni por los grupos de la biblioteca.
 
 ### Cambiado
 

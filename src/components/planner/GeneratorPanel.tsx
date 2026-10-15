@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { CalendarCheck2, CalendarPlus, Heart, Info, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
@@ -7,10 +7,10 @@ import { Badge, EmptyState, Input, Label, Segmented } from "@/components/ui/misc
 import { Checkbox, Slider, Switch, Tooltip } from "@/components/ui/primitives";
 import { useAutoTour } from "@/components/tour/Tour";
 import { api, errorMessage } from "@/lib/api";
-import { resolve, useScheduleEditor } from "@/lib/data";
+import { resolve, useLibraryIndex, useScheduleEditor } from "@/lib/data";
 import { useSettings } from "@/lib/settings";
 import { useUi } from "@/lib/store";
-import { DAYS, type Day, type GenerateResult, type TimeOfDay } from "@/lib/types";
+import { DAYS, type Day, type GeneratedSchedule, type GenerateResult, type TimeOfDay } from "@/lib/types";
 import { cn, DAY_SHORT, hhmm } from "@/lib/utils";
 import { eventsFrom, WeekGrid } from "./WeekGrid";
 
@@ -20,11 +20,14 @@ const WEIGHTS = [
   { value: "3", label: "Mucho" },
 ];
 
+const PREVIEW_DAYS = DAYS.filter((d) => d !== "SUN");
+
 export function GeneratorPanel() {
   const editor = useScheduleEditor();
   const settings = useSettings();
-  const { setGeneratorOpen, setPreview } = useUi();
-  const candidates = editor.index.items.filter((i) => i.course.groups.some((g) => g.sessions.length > 0));
+  const setGeneratorOpen = useUi((s) => s.setGeneratorOpen);
+  const setPreview = useUi((s) => s.setPreview);
+  const candidates = useMemo(() => editor.index.items.filter((i) => i.course.groups.some((g) => g.sessions.length > 0)), [editor.index.items]);
   const [chosen, setChosen] = useState<Set<string>>(() => {
     const inSchedule = new Set(editor.active?.selections.map((s) => s.courseCode));
     const base = candidates.filter((c) => inSchedule.has(c.course.code));
@@ -40,7 +43,6 @@ export function GeneratorPanel() {
   const [tod, setTod] = useState<TimeOfDay>("any");
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [running, setRunning] = useState(false);
-  const [hovered, setHovered] = useState<number | null>(null);
   useAutoTour("generator");
 
   const credits = useMemo(() => candidates.filter((c) => chosen.has(c.course.code)).reduce((a, c) => a + c.course.credits, 0), [candidates, chosen]);
@@ -82,7 +84,18 @@ export function GeneratorPanel() {
     }
   };
 
-  const nameOf = (code: string) => editor.index.byCode.get(code)?.course.name ?? code;
+  const { replaceSelections, undo, create } = editor;
+  const apply = useCallback(
+    (s: GeneratedSchedule) => {
+      replaceSelections(s.selections);
+      toast.success("Horario actualizado", { action: { label: "Deshacer", onClick: undo } });
+    },
+    [replaceSelections, undo],
+  );
+  const saveAsNew = useCallback(
+    (s: GeneratedSchedule, i: number) => create(`Opción ${i + 1}`, s.selections).then(() => toast.success("Guardado como horario nuevo")),
+    [create],
+  );
 
   return (
     <motion.aside
@@ -220,48 +233,9 @@ export function GeneratorPanel() {
                   </p>
                 ))}
                 {result.truncated && <p className="text-xs text-on-surface-variant">Búsqueda recortada: agrega filtros para explorar todo.</p>}
-                {result.schedules.map((s, i) => {
-                  const resolved = resolve(editor.index, s.selections);
-                  return (
-                    <div
-                      key={i}
-                      onMouseEnter={() => (setHovered(i), setPreview(s.selections))}
-                      onMouseLeave={() => (setHovered(null), setPreview(null))}
-                      className={cn(
-                        "rounded-2xl border bg-surface-lowest p-3 transition dark:bg-surface-container",
-                        hovered === i ? "border-primary/60 shadow-elev2" : "border-outline-variant/60",
-                      )}
-                    >
-                      <div className="mb-2 flex items-center gap-1.5">
-                        <span className="text-[13px] font-semibold">Opción {i + 1}</span>
-                        <div className="ml-auto flex flex-wrap justify-end gap-1">
-                          <Badge className="bg-surface-high">{s.metrics.days} días</Badge>
-                          <Badge className="bg-surface-high">{(s.metrics.gapMinutes / 60).toFixed(1)} h huecos</Badge>
-                          <Badge className="bg-surface-high">
-                            {hhmm(s.metrics.earliest)}–{hhmm(s.metrics.latest)}
-                          </Badge>
-                          {s.metrics.favorites > 0 && (
-                            <Badge className="bg-error/10 text-error">
-                              <Heart className="fill-current" /> {s.metrics.favorites}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <div className="h-[118px] overflow-hidden rounded-lg border border-outline-variant/40">
-                        <WeekGrid compact events={eventsFrom(resolved)} days={DAYS.filter((d) => d !== "SUN")} hours={[Math.floor(s.metrics.earliest / 60), Math.ceil(s.metrics.latest / 60)]} />
-                      </div>
-                      {s.omitted.length > 0 && <p className="mt-2 text-[11.5px] text-on-surface-variant">Sin: {s.omitted.map(nameOf).join(", ")}</p>}
-                      <div className="mt-2 flex gap-1.5">
-                        <Button size="sm" className="flex-1" onClick={() => (editor.replaceSelections(s.selections), toast.success("Horario actualizado", { action: { label: "Deshacer", onClick: editor.undo } }))}>
-                          <CalendarCheck2 /> Aplicar
-                        </Button>
-                        <Button size="sm" variant="tonal" onClick={() => editor.create(`Opción ${i + 1}`, s.selections).then(() => toast.success("Guardado como horario nuevo"))}>
-                          <CalendarPlus /> Nuevo
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
+                {result.schedules.map((s, i) => (
+                  <GeneratedOption key={i} schedule={s} index={i} onApply={apply} onSaveAsNew={saveAsNew} />
+                ))}
               </section>
             )}
           </div>
@@ -278,3 +252,64 @@ export function GeneratorPanel() {
     </motion.aside>
   );
 }
+
+/**
+ * One generated schedule. Memoized and subscribed only to whether it is the previewed one: hovering
+ * an option then redraws that option and the planner grid, not the other 39 previews.
+ */
+const GeneratedOption = memo(function GeneratedOption({
+  schedule: s,
+  index: i,
+  onApply,
+  onSaveAsNew,
+}: {
+  schedule: GeneratedSchedule;
+  index: number;
+  onApply: (s: GeneratedSchedule) => void;
+  onSaveAsNew: (s: GeneratedSchedule, i: number) => void;
+}) {
+  const index = useLibraryIndex();
+  const setPreview = useUi((st) => st.setPreview);
+  const previewed = useUi((st) => st.preview === s.selections);
+  const events = useMemo(() => eventsFrom(resolve(index, s.selections)), [index, s.selections]);
+  const nameOf = (code: string) => index.byCode.get(code)?.course.name ?? code;
+
+  return (
+    <div
+      onMouseEnter={() => setPreview(s.selections)}
+      onMouseLeave={() => setPreview(null)}
+      className={cn(
+        "rounded-2xl border bg-surface-lowest p-3 transition dark:bg-surface-container",
+        previewed ? "border-primary/60 shadow-elev2" : "border-outline-variant/60",
+      )}
+    >
+      <div className="mb-2 flex items-center gap-1.5">
+        <span className="text-[13px] font-semibold">Opción {i + 1}</span>
+        <div className="ml-auto flex flex-wrap justify-end gap-1">
+          <Badge className="bg-surface-high">{s.metrics.days} días</Badge>
+          <Badge className="bg-surface-high">{(s.metrics.gapMinutes / 60).toFixed(1)} h huecos</Badge>
+          <Badge className="bg-surface-high">
+            {hhmm(s.metrics.earliest)}–{hhmm(s.metrics.latest)}
+          </Badge>
+          {s.metrics.favorites > 0 && (
+            <Badge className="bg-error/10 text-error">
+              <Heart className="fill-current" /> {s.metrics.favorites}
+            </Badge>
+          )}
+        </div>
+      </div>
+      <div className="h-[118px] overflow-hidden rounded-lg border border-outline-variant/40">
+        <WeekGrid compact events={events} days={PREVIEW_DAYS} hours={[Math.floor(s.metrics.earliest / 60), Math.ceil(s.metrics.latest / 60)]} />
+      </div>
+      {s.omitted.length > 0 && <p className="mt-2 text-[11.5px] text-on-surface-variant">Sin: {s.omitted.map(nameOf).join(", ")}</p>}
+      <div className="mt-2 flex gap-1.5">
+        <Button size="sm" className="flex-1" onClick={() => onApply(s)}>
+          <CalendarCheck2 /> Aplicar
+        </Button>
+        <Button size="sm" variant="tonal" onClick={() => onSaveAsNew(s, i)}>
+          <CalendarPlus /> Nuevo
+        </Button>
+      </div>
+    </div>
+  );
+});
