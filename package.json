@@ -1,7 +1,7 @@
 {
   "name": "bettercampus-desktop",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Planeador de horarios y utilidades para estudiantes de la Universidad Nacional de Colombia",
   "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {

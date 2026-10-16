@@ -4,7 +4,10 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 
 ## [Sin publicar]
 
+## [0.2.1] - 2026-10-16
+
 ### Corregido
+
 - «Reemplazar», en el aviso de choque de horario, ya no deshace los cambios hechos mientras el aviso estaba abierto (por ejemplo, un bloque personal agregado) y quita también lo que choque en ese momento.
 - En el plan de estudios, elegir en «Otro plan» uno que ya descargaste lo abre al instante en lugar de descargarlo de nuevo. Para traer sus cambios del SIA sigue estando «Actualizar», que ahora muestra que está trabajando y no se puede pulsar dos veces.
 
@@ -60,6 +63,7 @@ Primera versión de escritorio, construida sobre Tauri 2, React y un núcleo en 
 - Persistencia local en SQLite con migraciones.
 - CI en Linux y Windows; releases para Linux, Windows (NSIS y MSI) y macOS.
 
-[Sin publicar]: https://github.com/Camilo-neck/BCDesktop/compare/v0.2.0...HEAD
+[Sin publicar]: https://github.com/Camilo-neck/BCDesktop/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Camilo-neck/BCDesktop/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Camilo-neck/BCDesktop/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Camilo-neck/BCDesktop/releases/tag/v0.1.0
