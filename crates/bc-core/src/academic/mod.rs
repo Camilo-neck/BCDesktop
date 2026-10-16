@@ -138,6 +138,42 @@ fn round(x: f64, digits: i32) -> f64 {
     (x * p).round() / p
 }
 
+/// Share of `required` covered by `approved`, in percent. Credits beyond the requirement
+/// (36 of 33) were really taken but do not advance the plan, so the result stops at 100.
+fn capped_percent(approved: u32, required: u32) -> f64 {
+    if required == 0 {
+        return 0.0;
+    }
+    round(approved.min(required) as f64 / required as f64 * 100.0, 1)
+}
+
+/// Credits each period adds toward the plan. Walks the periods in order and counts a passed
+/// course only while its typology still needs credits. Leveling never counts, and a typology
+/// without a row in the credits table is not capped.
+fn credits_toward_plan(periods: &[Period], credits: &BTreeMap<String, CreditSummary>) -> Vec<u32> {
+    let mut still_required: HashMap<&str, u32> = credits
+        .iter()
+        .map(|(row, c)| (row.as_str(), c.required))
+        .collect();
+    periods
+        .iter()
+        .map(|p| {
+            p.courses
+                .iter()
+                .filter(|c| c.passed && c.typology != Typology::Nivelacion)
+                .map(|c| match still_required.get_mut(c.typology.label()) {
+                    Some(left) => {
+                        let counted = c.credits.min(*left);
+                        *left -= counted;
+                        counted
+                    }
+                    None => c.credits,
+                })
+                .sum()
+        })
+        .collect()
+}
+
 fn first<'a>(re: &Regex, txt: &'a str, group: usize) -> Option<&'a str> {
     re.captures(txt)
         .and_then(|c| c.get(group))
@@ -234,11 +270,7 @@ pub fn parse(txt: &str) -> Result<AcademicHistory> {
                 pending: n(4),
                 enrolled: n(5),
                 taken: n(6),
-                progress: if required == 0 {
-                    0.0
-                } else {
-                    round(approved as f64 / required as f64 * 100.0, 1)
-                },
+                progress: capped_percent(approved, required),
             },
         );
     }
@@ -310,6 +342,7 @@ pub fn parse(txt: &str) -> Result<AcademicHistory> {
     }
 
     let mut periods: Vec<Period> = periods.into_values().collect();
+    let toward_plan = credits_toward_plan(&periods, &credits);
     let mut accumulated = 0.0;
     for i in 0..periods.len() {
         periods[i].papi = papi(&periods[i]);
@@ -318,7 +351,7 @@ pub fn parse(txt: &str) -> Result<AcademicHistory> {
         let progress = if total_required == 0 {
             0.0
         } else {
-            (periods[i].approved_credits as f64 / total_required as f64 * 100.0).max(0.0)
+            (toward_plan[i] as f64 / total_required as f64 * 100.0).max(0.0)
         };
         accumulated += progress;
         periods[i].progress = round(progress, 1);
@@ -353,8 +386,14 @@ pub fn parse(txt: &str) -> Result<AcademicHistory> {
             first(&PA, txt, 1).and_then(parse_f)
         },
         progress: first(&PROGRESS, txt, 1).and_then(parse_f).unwrap_or(0.0),
-        progress_fundamental: pct(fo.approved + fp.approved, fo.required + fp.required),
-        progress_disciplinary: pct(dobl.approved + dopt.approved, dobl.required + dopt.required),
+        progress_fundamental: pct(
+            fo.approved.min(fo.required) + fp.approved.min(fp.required),
+            fo.required + fp.required,
+        ),
+        progress_disciplinary: pct(
+            dobl.approved.min(dobl.required) + dopt.approved.min(dopt.required),
+            dobl.required + dopt.required,
+        ),
         progress_electives: cr("LIBRE ELECCIÓN").progress,
         credits,
         surplus_credits: first(&SURPLUS, txt, 1)
@@ -571,6 +610,83 @@ mod tests {
     #[test]
     fn rejects_garbage() {
         assert!(matches!(validate("hola"), Err(Error::Invalid(_))));
+    }
+
+    #[test]
+    fn capped_percent_never_exceeds_100() {
+        assert_eq!(capped_percent(36, 33), 100.0);
+        assert_eq!(capped_percent(20, 33), 60.6);
+        assert_eq!(capped_percent(5, 0), 0.0);
+    }
+
+    fn taken(credits: u32, typology: Typology, passed: bool) -> TakenCourse {
+        TakenCourse {
+            code: String::new(),
+            name: String::new(),
+            credits,
+            typology,
+            typology_label: typology.label().to_owned(),
+            period: String::new(),
+            grade: None,
+            passed,
+        }
+    }
+
+    #[test]
+    fn surplus_credits_do_not_count_toward_progress() {
+        let row = |required| CreditSummary {
+            required,
+            ..Default::default()
+        };
+        let credits = BTreeMap::from([
+            ("LIBRE ELECCIÓN".to_owned(), row(3)),
+            ("DISCIPLINAR OBLIGATORIA".to_owned(), row(4)),
+        ]);
+        let period = |courses| Period {
+            courses,
+            ..Default::default()
+        };
+        let periods = [
+            period(vec![
+                taken(2, Typology::LibreEleccion, true),
+                taken(4, Typology::DiscObligatoria, true),
+            ]),
+            period(vec![
+                // Only 1 of these 2 credits is still required; the failed course counts nothing.
+                taken(2, Typology::LibreEleccion, true),
+                taken(3, Typology::LibreEleccion, false),
+                taken(2, Typology::Nivelacion, true),
+            ]),
+            period(vec![taken(4, Typology::DiscObligatoria, true)]),
+        ];
+        assert_eq!(credits_toward_plan(&periods, &credits), vec![6, 1, 0]);
+    }
+
+    #[test]
+    fn parsed_progress_ignores_surplus_credits() {
+        // The plan requires 1 elective credit; the student passed 2 (one per period).
+        let txt = SAMPLE
+            .replace(
+                "LIBRE ELECCIÓN\t30\t1\t29\t0\t1",
+                "LIBRE ELECCIÓN\t1\t2\t0\t0\t2",
+            )
+            .replace(
+                "\nFUND. OBLIGATORIA\t27",
+                "\nElectiva (1000090-B)\t1\tLIBRE ELECCIÓN\t2023-2S Ordinaria\t\nAPROBADA\nFUND. OBLIGATORIA\t27",
+            );
+        let h = parse(&txt).unwrap();
+        let electives = &h.credits["LIBRE ELECCIÓN"];
+        assert_eq!((electives.approved, electives.required), (2, 1));
+        assert_eq!(electives.progress, 100.0);
+        assert_eq!(h.progress_electives, 100.0);
+        // 2023-1S: 3 (Programación) + 1 (Cátedra). 2023-2S: 4 (Cálculo), the extra elective adds nothing.
+        let periods: Vec<(&str, f64)> = h
+            .periods
+            .iter()
+            .map(|p| (p.name.as_str(), p.progress))
+            .collect();
+        assert_eq!(periods, vec![("2023-1", 2.6), ("2023-2", 2.6)]);
+        assert_eq!(h.periods[1].accumulated_progress, 5.2);
     }
 }
 

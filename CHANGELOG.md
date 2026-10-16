@@ -21,6 +21,7 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 - El indicador de progreso ya no queda escondido detrás de las ventanas (descargar el plan, agregar asignaturas, exportar), y su botón de cancelar funciona aunque haya una ventana abierta.
 - Descargar un plan de estudios ya no bloquea la ventana durante la descarga: se cierra al empezar y el progreso sigue en el indicador.
 - Si una tarea larga falla a mitad de camino, el indicador de progreso ya no queda pegado en pantalla.
+- En «Mi avance», los créditos vistos de más en una tipología (por ejemplo 36 de 33 en libre elección) se siguen mostrando, pero ya no inflan el porcentaje de esa tipología ni la gráfica de avance acumulado.
 
 ### Cambiado
 
