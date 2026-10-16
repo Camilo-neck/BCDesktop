@@ -103,4 +103,5 @@ Las tareas largas emiten el evento `bc://progress` con `{ task, done, total, cur
 - **Datos**: `lib/data.ts` concentra la lógica del editor de horarios (actualización optimista, deshacer, choques). Las páginas no llaman a `api` para mutar horarios directamente.
 - **Tema**: los colores son variables CSS (`styles/globals.css`) expuestas como tokens de Tailwind. En SVG y Recharts se usan resueltos con `useThemeColor()`.
 - **Tutoriales**: `components/tour/tours.tsx` define los pasos; cada paso apunta a un elemento con `data-tour="…"`. `useAutoTour(id)` lo lanza la primera vez y el estado se guarda en `settings.tours`.
+- **Actualizaciones**: `lib/updater.ts` maneja el flujo (buscar, descargar, instalar, reiniciar) con `@tauri-apps/plugin-updater`, y `components/shell/UpdateDialog.tsx` busca al abrir la app. Con el ajuste `autoUpdate`, descarga sin preguntar y registra `onCloseRequested` para instalar al cerrar. La configuración y las llaves están en [RELEASING.md](RELEASING.md#actualizaciones-de-la-app).
 - **Modo navegador**: con `npm run dev` fuera de Tauri, `lib/api.ts` redirige las llamadas a `dev/mock.ts`.

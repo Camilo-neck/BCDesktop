@@ -19,4 +19,5 @@ Respondemos en un máximo de 7 días. Coordinaremos contigo la fecha de publicac
 - **Datos del estudiante**: la historia académica, los horarios y los ajustes viven en SQLite local. Nada debería salir del equipo sin una acción explícita del usuario.
 - **Tokens de Google**: el refresh token se guarda en el llavero del sistema. Solo si no hay llavero se usa la base local como respaldo.
 - **Superficie de la ventana**: los permisos de la webview están en `src-tauri/capabilities/default.json`, con una CSP restrictiva en `tauri.conf.json`. Cualquier cambio que los amplíe debe justificarse en el PR.
+- **Actualizaciones**: la app solo instala paquetes firmados con la llave privada del proyecto (minisign) y descargados por HTTPS desde los releases de GitHub. La llave privada vive solo en los secrets de GitHub Actions y en el respaldo de los mantenedores. Si sospechas que se filtró, repórtalo de inmediato por el canal privado. El procedimiento está en [docs/RELEASING.md](docs/RELEASING.md#llaves-de-firma).
 - **Secretos**: nunca se suben al repositorio. Los valores de compilación (`BC_GOOGLE_CLIENT_ID`, etc.) se configuran como variables o secrets de GitHub Actions.

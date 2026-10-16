@@ -44,6 +44,12 @@ jobs:
 
       - run: npm ci
 
+      # Sin la llave pública, las versiones publicadas no podrían verificar ni instalar actualizaciones.
+      - name: Verificar la llave pública del updater
+        shell: bash
+        run: |
+          node -e "if (!require('./src-tauri/tauri.conf.json').plugins?.updater?.pubkey) { console.error('Falta plugins.updater.pubkey en src-tauri/tauri.conf.json (ver docs/RELEASING.md)'); process.exit(1) }"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -51,6 +57,9 @@ jobs:
           BC_GOOGLE_CLIENT_ID: ${{ vars.BC_GOOGLE_CLIENT_ID }}
           BC_GOOGLE_CLIENT_SECRET: ${{ secrets.BC_GOOGLE_CLIENT_SECRET }}
           BC_STATS_API_URL: ${{ vars.BC_STATS_API_URL }}
+          # Firma de las actualizaciones (obligatoria): ver docs/RELEASING.md.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "BetterCampus ${{ github.ref_name }}"
@@ -66,4 +75,7 @@ jobs:
             Cambios de esta versión: [CHANGELOG](https://github.com/Camilo-neck/BCDesktop/blob/${{ github.ref_name }}/CHANGELOG.md).
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}
+          # Genera y firma los paquetes de actualización, y sube latest.json al release.
+          args: ${{ matrix.args }} --config src-tauri/tauri.release.conf.json
+          uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
