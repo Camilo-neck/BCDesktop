@@ -321,11 +321,12 @@ function DownloadPlanDialog({
   const run = async () => {
     if (!career) return;
     setBusy(true);
+    // The download takes up to a minute: close the dialog and let it run with the progress indicator.
+    onOpenChange(false);
     try {
       const p = await api.fetchPlan({ ...career, electives: false });
       await onDone(p.careerKey);
       toast.success("Plan descargado", { description: p.careerName });
-      onOpenChange(false);
     } catch (e) {
       if (!(e && typeof e === "object" && "kind" in e && (e as { kind: string }).kind === "cancelled"))
         toast.error("No se pudo descargar el plan", { description: errorMessage(e) });
@@ -334,7 +335,7 @@ function DownloadPlanDialog({
     }
   };
   return (
-    <Dialog open={open} onOpenChange={(o) => !busy && onOpenChange(o)}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[min(94vw,440px)]">
         <DialogHeader>
           <DialogTitle>Descargar plan de estudios</DialogTitle>
@@ -342,7 +343,7 @@ function DownloadPlanDialog({
         </DialogHeader>
         <div className="px-6 pb-5">{open && <CareerPicker value={career} onChange={setCareer} allowElectives={false} />}</div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button onClick={run} loading={busy} disabled={!career}>

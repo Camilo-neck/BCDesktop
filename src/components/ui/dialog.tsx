@@ -28,9 +28,10 @@ export const DialogContent = forwardRef<ElementRef<typeof D.Content>, ContentPro
       <D.Content
         ref={ref}
         aria-describedby={undefined}
-        // A guided tour drawn over the dialog lives outside it: using the tour must not close the dialog.
+        // Layers drawn over dialogs (the guided tour, the task progress indicator) live outside them:
+        // using them must not close the dialog.
         onInteractOutside={(e) => {
-          if (e.target instanceof Element && e.target.closest("[data-tour-host]")) e.preventDefault();
+          if (e.target instanceof Element && e.target.closest("[data-above-dialogs]")) e.preventDefault();
           else onInteractOutside?.(e);
         }}
         className={cn(

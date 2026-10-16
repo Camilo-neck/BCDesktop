@@ -8,8 +8,12 @@ interface UiState {
   preview: Selection[] | null;
   setPreview: (p: Selection[] | null) => void;
 
+  /** Latest progress of the running long task: `total` 0 means it is starting, `done >= total` that it just finished. */
   progress: Progress | null;
   setProgress: (p: Progress | null) => void;
+  /** The progress indicator is collapsed to a corner badge (kept for the session). */
+  progressMinimized: boolean;
+  setProgressMinimized: (m: boolean) => void;
 
   addCoursesOpen: boolean;
   setAddCoursesOpen: (o: boolean) => void;
@@ -46,6 +50,8 @@ export const useUi = create<UiState>((set, get) => ({
   setPreview: (preview) => set({ preview }),
   progress: null,
   setProgress: (progress) => set({ progress }),
+  progressMinimized: false,
+  setProgressMinimized: (progressMinimized) => set({ progressMinimized }),
   addCoursesOpen: false,
   setAddCoursesOpen: (addCoursesOpen) => set({ addCoursesOpen }),
   generatorOpen: false,
