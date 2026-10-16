@@ -149,9 +149,9 @@ export function TourHost() {
 
   return createPortal(
     // A modal dialog sets `pointer-events: none` on <body>, which this portal would inherit: re-enable it so the
-    // tour stays usable over dialogs. `data-tour-host` lets dialogs ignore clicks here (see DialogContent).
+    // tour stays usable over dialogs. `data-above-dialogs` lets dialogs ignore clicks here (see DialogContent).
     // The backdrop has no click handler: only Omitir, the close button or Esc skip a tour.
-    <div data-tour-host className="pointer-events-auto fixed inset-0 z-[100]" aria-live="polite">
+    <div data-above-dialogs className="pointer-events-auto fixed inset-0 z-[100]" aria-live="polite">
       <svg className="absolute inset-0 size-full">
         <defs>
           <mask id="tour-mask">

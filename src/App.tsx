@@ -50,10 +50,8 @@ export function App() {
     if (!isTauri()) return;
     // The window starts hidden (tauri.conf.json) so it appears already painted.
     void getCurrentWindow().show();
-    const un = listen<Progress>("bc://progress", (e) => {
-      const p = e.payload;
-      setProgress(p.done >= p.total ? null : p);
-    });
+    // The last event (done >= total) is kept: the indicator shows it as finished, then hides itself.
+    const un = listen<Progress>("bc://progress", (e) => setProgress(e.payload));
     return () => {
       void un.then((f) => f());
     };

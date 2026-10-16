@@ -232,7 +232,12 @@ export function GeneratorPanel() {
                     <b>{u.name}</b>: {u.reason}
                   </p>
                 ))}
-                {result.truncated && <p className="text-xs text-on-surface-variant">Búsqueda recortada: agrega filtros para explorar todo.</p>}
+                {result.truncated && (
+                  <p className="rounded-xl bg-warning/10 px-3 py-2 text-xs text-warning">
+                    El cálculo superó el tiempo límite. Estas son las mejores opciones que encontró; agrega filtros para revisar todas las
+                    combinaciones.
+                  </p>
+                )}
                 {result.schedules.map((s, i) => (
                   <GeneratedOption key={i} schedule={s} index={i} onApply={apply} onSaveAsNew={saveAsNew} />
                 ))}
