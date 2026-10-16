@@ -52,6 +52,11 @@ export function resolve(index: LibraryIndex, selections: Selection[]): ResolvedS
   return out;
 }
 
+/** Courses of `selections` whose group collides with `group` (other than `courseCode` itself). */
+export function collidingWith(index: LibraryIndex, selections: Selection[], courseCode: string, group: Group): ResolvedSelection[] {
+  return resolve(index, selections).filter((r) => r.course.code !== courseCode && groupsCollide(r.group, group));
+}
+
 export function useActiveSchedule() {
   const { data: schedules } = useSchedules();
   const settings = useSettings();
@@ -89,20 +94,26 @@ export function useScheduleEditor() {
   // `mutate` keeps its identity across renders, unlike the mutation object: depending on it keeps
   // every editor action stable, so memoized components that receive one don't re-render.
   const { mutate } = save;
+
+  /** Schedule `id` as the cache holds it now. Actions that run later than the render that created
+   *  them (a toast button) read it instead of `active`, which may be outdated by then. */
+  const currentSchedule = useCallback((id: string) => qc.getQueryData<Schedule[]>(["schedules"])?.find((s) => s.id === id), [qc]);
+
   const commit = useCallback(
-    (next: Partial<Schedule>, recordUndo = true) => {
-      if (!active) return;
-      if (recordUndo && next.selections) pushUndo(active.id, active.selections);
-      mutate({ ...active, ...next });
+    (id: string, next: Partial<Schedule>, recordUndo = true) => {
+      const current = currentSchedule(id);
+      if (!current) return;
+      if (recordUndo && next.selections) pushUndo(id, current.selections);
+      mutate({ ...current, ...next });
     },
-    [active, mutate, pushUndo],
+    [currentSchedule, mutate, pushUndo],
   );
 
   /** Courses in the schedule whose group collides with `group`. */
   const conflictsWith = useCallback(
     (courseCode: string, group: Group): ResolvedSelection[] => {
       if (!active) return [];
-      return resolve(index, active.selections).filter((r) => r.course.code !== courseCode && groupsCollide(r.group, group));
+      return collidingWith(index, active.selections, courseCode, group);
     },
     [active, index],
   );
@@ -121,7 +132,7 @@ export function useScheduleEditor() {
       if (!item || !group) return false;
       const current = active.selections.find((s) => s.courseCode === courseCode);
       if (current?.groupId === groupId) {
-        commit({ selections: active.selections.filter((s) => s.courseCode !== courseCode) });
+        commit(active.id, { selections: active.selections.filter((s) => s.courseCode !== courseCode) });
         return true;
       }
       const clashes = conflictsWith(courseCode, group);
@@ -130,11 +141,13 @@ export function useScheduleEditor() {
           description: "Quita esa asignatura o elige otro grupo.",
           action: {
             label: "Reemplazar",
+            // The student may edit the schedule before pressing this: start from the schedule as it is then.
             onClick: () => {
-              const keep = active.selections.filter(
-                (s) => s.courseCode !== courseCode && !clashes.some((c) => c.course.code === s.courseCode),
-              );
-              commit({ selections: [...keep, { courseCode, groupId }] });
+              const latest = currentSchedule(active.id);
+              if (!latest) return;
+              const colliding = new Set(collidingWith(index, latest.selections, courseCode, group).map((r) => r.course.code));
+              const keep = latest.selections.filter((s) => s.courseCode !== courseCode && !colliding.has(s.courseCode));
+              commit(latest.id, { selections: [...keep, { courseCode, groupId }] });
             },
           },
         });
@@ -142,22 +155,23 @@ export function useScheduleEditor() {
       }
       if (group.spots === 0) toast.warning("Este grupo no tiene cupos disponibles", { description: "Se agregó igual, por si se liberan." });
       const rest = active.selections.filter((s) => s.courseCode !== courseCode);
-      commit({ selections: [...rest, { courseCode, groupId }] });
+      commit(active.id, { selections: [...rest, { courseCode, groupId }] });
       return true;
     },
-    [active, index, commit, conflictsWith],
+    [active, index, commit, conflictsWith, currentSchedule],
   );
 
   const removeCourse = useCallback(
-    (courseCode: string) => active && commit({ selections: active.selections.filter((s) => s.courseCode !== courseCode) }),
+    (courseCode: string) => active && commit(active.id, { selections: active.selections.filter((s) => s.courseCode !== courseCode) }),
     [active, commit],
   );
 
-  const replaceSelections = useCallback((selections: Selection[]) => commit({ selections }), [commit]);
+  const activeId = active?.id;
+  const replaceSelections = useCallback((selections: Selection[]) => activeId && commit(activeId, { selections }), [activeId, commit]);
 
-  const setBlocks = useCallback((blocks: Block[]) => commit({ blocks }, false), [commit]);
+  const setBlocks = useCallback((blocks: Block[]) => activeId && commit(activeId, { blocks }, false), [activeId, commit]);
 
-  const rename = useCallback((name: string) => commit({ name }, false), [commit]);
+  const rename = useCallback((name: string) => activeId && commit(activeId, { name }, false), [activeId, commit]);
 
   const undo = useCallback(() => {
     if (!active) return;

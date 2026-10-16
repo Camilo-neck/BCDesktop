@@ -24,6 +24,7 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 - Si una tarea larga falla a mitad de camino, el indicador de progreso ya no queda pegado en pantalla.
 - En «Mi avance», los créditos vistos de más en una tipología (por ejemplo 36 de 33 en libre elección) se siguen mostrando, pero ya no inflan el porcentaje de esa tipología ni la gráfica de avance acumulado.
 - La app ya no se congela al pasar el mouse por las opciones del generador de horarios ni por los grupos de la biblioteca.
+- «Reemplazar», en el aviso de choque de horario, ya no deshace los cambios hechos mientras el aviso estaba abierto (por ejemplo, un bloque personal agregado) y quita también lo que choque en ese momento.
 
 ### Cambiado
 
