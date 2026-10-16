@@ -11,7 +11,7 @@ Las versiones se publican con GitHub Actions (`.github/workflows/release.yml`). 
 2. Corre `cargo check` para que se actualice `Cargo.lock`.
 3. En `CHANGELOG.md`, mueve lo de `Sin publicar` a una sección nueva con la versión y la fecha, y actualiza los enlaces del final.
 4. Haz commit, crea el tag `vX.Y.Z` y súbelo.
-5. Cuando el workflow termine, revisa el borrador en Releases: prueba al menos el instalador de Windows, pega las notas del changelog y publícalo.
+5. Cuando el workflow termine, revisa el borrador en Releases: prueba al menos el instalador de Windows, pega las notas del changelog y publícalo. **Al publicarlo, las apps instaladas empiezan a ofrecer la actualización**; mientras siga en borrador o marcado como *pre-release*, nadie la recibe.
 
 ## Artefactos
 
@@ -37,7 +37,7 @@ npm run tauri build -- --runner cargo-xwin --target x86_64-pc-windows-msvc
 
 ## Variables y secrets del repositorio
 
-Se configuran en *Settings › Secrets and variables › Actions*. Se incrustan en el binario al compilar; la app no permite cambiarlas. Si falta alguna, la función correspondiente aparece como no disponible.
+Se configuran en *Settings › Secrets and variables › Actions*. Se incrustan en el binario al compilar; la app no permite cambiarlas. Si falta alguna, la función correspondiente aparece como no disponible. Los secrets de firma de las actualizaciones son aparte y obligatorios: ver [Llaves de firma](#llaves-de-firma).
 
 | Nombre | Tipo | Uso |
 | --- | --- | --- |
@@ -45,12 +45,49 @@ Se configuran en *Settings › Secrets and variables › Actions*. Se incrustan 
 | `BC_GOOGLE_CLIENT_SECRET` | Secret | Secret del mismo cliente |
 | `BC_STATS_API_URL` | Variable | URL base de la API de cupos |
 
+## Actualizaciones de la app
+
+Las apps instaladas se actualizan con [`tauri-plugin-updater`](https://v2.tauri.app/plugin/updater/):
+
+1. En el release, `tauri-action` compila con `--config src-tauri/tauri.release.conf.json`, que activa `createUpdaterArtifacts`. Así, cada instalador sale con su firma `.sig`, y se sube al release un `latest.json` con la versión y la URL y la firma de cada plataforma.
+2. La app consulta `releases/latest/download/latest.json` (`plugins.updater.endpoints` en `tauri.conf.json`). `releases/latest` solo apunta al último release publicado que no sea *pre-release*.
+3. Antes de instalar, la app verifica la firma con la llave pública de `plugins.updater.pubkey`. Un paquete que no esté firmado con la llave privada del proyecto se rechaza.
+
+| Plataforma | Qué se instala |
+| --- | --- |
+| Windows | El instalador NSIS (`*-setup.exe`) o el `.msi`, en modo pasivo. La app se cierra mientras se instala. |
+| macOS | El `.app.tar.gz` |
+| Linux | El mismo formato con el que se instaló: AppImage, `.deb` o `.rpm`. Para `.deb` y `.rpm` el sistema pide la contraseña. |
+
+### Llaves de firma
+
+Es un par de llaves [minisign](https://jedisct1.github.io/minisign/). No sirven las llaves SSH ni las de GPG.
+
+```bash
+npx tauri signer generate -w ~/.tauri/bettercampus.key   # desde la carpeta del proyecto
+```
+
+| Dónde | Qué |
+| --- | --- |
+| `src-tauri/tauri.conf.json` → `plugins.updater.pubkey` | Contenido de `bettercampus.key.pub` (es pública y va en el repositorio) |
+| Secret `TAURI_SIGNING_PRIVATE_KEY` | Contenido de `bettercampus.key` |
+| Secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | La contraseña de la llave |
+
+- **Respaldo**: la llave privada y su contraseña están guardadas en el gestor de contraseñas de los mantenedores. Si se pierden, las copias instaladas no pueden volver a actualizarse solas: habría que publicar una versión con una llave nueva y pedir que se instale a mano.
+- **Si se filtra la llave privada**: genera un par nuevo, actualiza `pubkey` y los secrets, y publica una versión. Las copias que ya tienen la llave anterior seguirían aceptando paquetes firmados con la filtrada, así que avisa a los usuarios para que instalen esa versión a mano.
+- **Comprobaciones**: el workflow falla si `pubkey` está vacía, y el bundler falla si la llave privada no corresponde a la pública.
+- **Builds locales**: `npm run app:build` no usa `tauri.release.conf.json`, así que no firma y no necesita las llaves.
+
+### Probar una actualización
+
+- **Interfaz**: `npm run dev` y abrir `/?update`, que simula una versión 0.2.0 con descarga e instalación.
+- **De punta a punta**: instala una versión publicada, publica la siguiente y abre la app. El diálogo aparece unos segundos después de abrirla. Las builds de desarrollo (`npm run app:dev`) no buscan actualizaciones al abrir.
+
 ## Pendiente para versiones futuras
 
-- **TO-DO · Integraciones**: configurar en el repositorio las variables y secrets de la tabla anterior para que los releases incluyan Google Calendar y el histórico de cupos. Sin ellas, los instaladores publicados solo exportan a `.ics`. Pasos:
+- **TO-DO · Integraciones**: configurar en el repositorio las variables y secrets de [Variables y secrets del repositorio](#variables-y-secrets-del-repositorio) para que los releases incluyan Google Calendar y el histórico de cupos. Sin ellas, los instaladores publicados solo exportan a `.ics`. Pasos:
   1. En Google Cloud Console, crear el proyecto de BetterCampus y habilitar la Google Calendar API.
   2. Configurar la pantalla de consentimiento OAuth con el alcance `calendar.app.created` y enviarla a verificación de Google. Mientras no esté verificada, solo funciona para los usuarios de prueba.
   3. Crear un cliente OAuth de tipo «App de escritorio» y guardar su ID y su secret como `BC_GOOGLE_CLIENT_ID` y `BC_GOOGLE_CLIENT_SECRET`.
   4. Definir `BC_STATS_API_URL` con la URL pública de la API de cupos.
 - **Firma de código**: sin certificado, Windows SmartScreen y macOS Gatekeeper muestran una advertencia al primer arranque. Para Windows se puede usar un certificado OV/EV o Azure Trusted Signing. Para macOS, una cuenta de Apple Developer más notarización. Ambos se configuran en `tauri-action` con secrets.
-- **Actualizaciones automáticas**: agregar `tauri-plugin-updater`, generar un par de llaves con `npm run tauri signer generate`, poner la llave pública en `tauri.conf.json`, guardar `TAURI_SIGNING_PRIVATE_KEY` como secret y activar `createUpdaterArtifacts`.

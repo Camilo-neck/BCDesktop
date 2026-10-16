@@ -10,6 +10,7 @@ import {
   House,
   Info,
   Moon,
+  RefreshCw,
   RotateCcw,
   Settings,
   Sparkles,
@@ -21,6 +22,7 @@ import { useSetSetting, useSettings } from "@/lib/settings";
 import { useUi } from "@/lib/store";
 import { TYPOLOGY } from "@/lib/utils";
 import { useTourStore } from "@/components/tour/Tour";
+import { checkForUpdates } from "@/lib/updater";
 
 function Item({ icon, children, onSelect, hint, value }: { icon: ReactNode; children: ReactNode; onSelect: () => void; hint?: string; value?: string }) {
   return (
@@ -94,6 +96,9 @@ export function CommandPalette() {
                 </Item>
                 <Item icon={<RotateCcw />} onSelect={run(() => (navigate("/"), startTour("welcome")))}>
                   Repetir tutorial de bienvenida
+                </Item>
+                <Item icon={<RefreshCw />} onSelect={run(() => void checkForUpdates(true))}>
+                  Buscar actualizaciones
                 </Item>
               </Command.Group>
 
