@@ -50,7 +50,7 @@ jobs:
         run: |
           node -e "if (!require('./src-tauri/tauri.conf.json').plugins?.updater?.pubkey) { console.error('Falta plugins.updater.pubkey en src-tauri/tauri.conf.json (ver docs/RELEASING.md)'); process.exit(1) }"
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Opcionales: se incrustan en el binario en tiempo de compilación.
