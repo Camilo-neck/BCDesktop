@@ -95,7 +95,7 @@ Vigencia de la caché: desplegables 7 días, oferta de una carrera 6 horas, rese
 
 Las tareas largas emiten el evento `bc://progress` con `{ task, done, total, current }`. La interfaz lo muestra en el indicador flotante, y `sia_cancel` lo detiene entre peticiones.
 
-`settings_get` y `settings_set` solo aceptan las claves públicas listadas en `commands/system.rs`; los tokens y los datos internos no son accesibles desde la interfaz.
+`settings_get` y `settings_set` solo aceptan las claves públicas listadas en `commands/system.rs`; los tokens y los datos internos no son accesibles desde la interfaz. Las credenciales de Google y la URL de la API de cupos no son ajustes: se leen de variables de entorno al compilar (`state.rs`).
 
 ## Interfaz
 

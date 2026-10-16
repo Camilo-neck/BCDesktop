@@ -86,7 +86,7 @@ function naiveGenerate(req: GenerateRequest): GenerateResult {
 type Args = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const handlers: Record<string, (a: Args) => unknown> = {
-  app_info: () => ({ version: "0.1.0-dev", dataDir: "~/.local/share/co.com.bettercampus.desktop", os: "linux", arch: "x86_64", defaultStatsApi: "", googleConfigured: false }),
+  app_info: () => ({ version: "0.1.0-dev", dataDir: "~/.local/share/co.com.bettercampus.desktop", os: "linux", arch: "x86_64", googleConfigured: false }),
   settings_get: () => settings,
   settings_set: (a) => void (settings[a.key] = a.value),
   cache_clear: () => 12,

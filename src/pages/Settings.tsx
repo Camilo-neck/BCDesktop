@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { CalendarDays, Database, FolderOpen, Laptop, Moon, Palette, Plug, RefreshCw, RotateCcw, Sun, Trash2 } from "lucide-react";
+import { CalendarDays, Database, FolderOpen, Laptop, Moon, Palette, RefreshCw, RotateCcw, Sun, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Segmented } from "@/components/ui/misc";
@@ -116,15 +116,6 @@ export function SettingsPage() {
   const info = useQuery({ queryKey: ["appInfo"], queryFn: api.appInfo, staleTime: Infinity });
   const startTour = useTourStore((x) => x.start);
   const [reset, setReset] = useState<null | "data" | "all">(null);
-  const [statsUrl, setStatsUrl] = useState(s.statsApiUrl);
-  const [clientId, setClientId] = useState(s.googleClientId);
-  const [clientSecret, setClientSecret] = useState(s.googleClientSecret);
-
-  useEffect(() => {
-    setStatsUrl(s.statsApiUrl);
-    setClientId(s.googleClientId);
-    setClientSecret(s.googleClientSecret);
-  }, [s.statsApiUrl, s.googleClientId, s.googleClientSecret]);
 
   useEffect(() => {
     if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "smooth" });
@@ -186,36 +177,6 @@ export function SettingsPage() {
               <Label>Fin</Label>
               <Input type="date" value={s.term.until} onChange={(e) => set("term", { ...s.term, until: e.target.value })} />
             </div>
-          </div>
-        </Section>
-
-        <Section id="google" icon={<Plug />} title="Integraciones">
-          <div>
-            <Label hint={info.data?.googleConfigured && !s.googleClientId ? "Incluido en esta versión" : undefined}>Google Calendar · Client ID</Label>
-            <Input
-              placeholder="xxxxxxxx.apps.googleusercontent.com"
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              onBlur={() => clientId !== s.googleClientId && set("googleClientId", clientId.trim())}
-            />
-            <p className="mt-1.5 text-xs text-on-surface-variant">
-              Cliente OAuth de tipo «App de escritorio» en Google Cloud Console, con la API de Google Calendar habilitada.
-            </p>
-          </div>
-          <div>
-            <Label>Google Calendar · Client secret</Label>
-            <Input
-              type="password"
-              placeholder="Opcional según el tipo de cliente"
-              value={clientSecret}
-              onChange={(e) => setClientSecret(e.target.value)}
-              onBlur={() => clientSecret !== s.googleClientSecret && set("googleClientSecret", clientSecret.trim())}
-            />
-          </div>
-          <div>
-            <Label hint={info.data?.defaultStatsApi ? `Por defecto: ${info.data.defaultStatsApi}` : undefined}>API de estadísticas de cupos</Label>
-            <Input placeholder="https://…" value={statsUrl} onChange={(e) => setStatsUrl(e.target.value)} onBlur={() => statsUrl !== s.statsApiUrl && set("statsApiUrl", statsUrl.trim())} />
-            <p className="mt-1.5 text-xs text-on-surface-variant">El histórico de cupos lo recolecta el servidor de BetterCampus; la app solo lo consulta.</p>
           </div>
         </Section>
 
