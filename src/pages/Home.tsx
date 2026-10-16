@@ -19,7 +19,8 @@ function greeting() {
 export function HomePage() {
   const navigate = useNavigate();
   const editor = useScheduleEditor();
-  const { setAddCoursesOpen, setGeneratorOpen } = useUi();
+  const setAddCoursesOpen = useUi((s) => s.setAddCoursesOpen);
+  const setGeneratorOpen = useUi((s) => s.setGeneratorOpen);
   const history = useQuery({ queryKey: ["history"], queryFn: api.latestHistory, staleTime: Infinity });
   const h = history.data?.history;
 

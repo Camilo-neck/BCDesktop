@@ -15,7 +15,8 @@ import { DAY_LONG, hhmm, normalizeText } from "@/lib/utils";
 import losEstudiantes from "@/assets/losestudiantes.png";
 
 export function GroupDetailSheet() {
-  const { groupDetail, setGroupDetail } = useUi();
+  const groupDetail = useUi((s) => s.groupDetail);
+  const setGroupDetail = useUi((s) => s.setGroupDetail);
   const editor = useScheduleEditor();
   const item = groupDetail ? editor.index.byCode.get(groupDetail.courseCode) : undefined;
   const group = item?.course.groups.find((g) => g.id === groupDetail?.groupId);

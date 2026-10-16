@@ -66,7 +66,9 @@ export function useScheduleEditor() {
   const { active, schedules } = useActiveSchedule();
   const index = useLibraryIndex();
   const setSetting = useSetSetting();
-  const { pushUndo, popUndo, popRedo } = useUi();
+  const pushUndo = useUi((s) => s.pushUndo);
+  const popUndo = useUi((s) => s.popUndo);
+  const popRedo = useUi((s) => s.popRedo);
 
   const save = useMutation({
     mutationFn: api.saveSchedule,
@@ -84,13 +86,16 @@ export function useScheduleEditor() {
     },
   });
 
+  // `mutate` keeps its identity across renders, unlike the mutation object: depending on it keeps
+  // every editor action stable, so memoized components that receive one don't re-render.
+  const { mutate } = save;
   const commit = useCallback(
     (next: Partial<Schedule>, recordUndo = true) => {
       if (!active) return;
       if (recordUndo && next.selections) pushUndo(active.id, active.selections);
-      save.mutate({ ...active, ...next });
+      mutate({ ...active, ...next });
     },
-    [active, save, pushUndo],
+    [active, mutate, pushUndo],
   );
 
   /** Courses in the schedule whose group collides with `group`. */
@@ -157,14 +162,14 @@ export function useScheduleEditor() {
   const undo = useCallback(() => {
     if (!active) return;
     const prev = popUndo(active.id, active.selections);
-    if (prev) save.mutate({ ...active, selections: prev });
-  }, [active, popUndo, save]);
+    if (prev) mutate({ ...active, selections: prev });
+  }, [active, popUndo, mutate]);
 
   const redo = useCallback(() => {
     if (!active) return;
     const next = popRedo(active.id, active.selections);
-    if (next) save.mutate({ ...active, selections: next });
-  }, [active, popRedo, save]);
+    if (next) mutate({ ...active, selections: next });
+  }, [active, popRedo, mutate]);
 
   const setActive = useCallback((id: string) => setSetting("activeScheduleId", id), [setSetting]);
 

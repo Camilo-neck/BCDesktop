@@ -15,7 +15,8 @@ import { useUi } from "@/lib/store";
 import type { Term } from "@/lib/types";
 
 export function ExportDialog() {
-  const { exportOpen, setExportOpen } = useUi();
+  const exportOpen = useUi((s) => s.exportOpen);
+  const setExportOpen = useUi((s) => s.setExportOpen);
   const { active } = useActiveSchedule();
   const settings = useSettings();
   const setSetting = useSetSetting();

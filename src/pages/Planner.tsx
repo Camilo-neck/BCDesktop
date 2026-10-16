@@ -21,8 +21,9 @@ import { cn, DAY_LONG, groupTag, hhmm, modKey, overlaps, professorLine } from "@
 
 export function PlannerPage() {
   const editor = useScheduleEditor();
-  const settings = useSettings();
-  const { preview, generatorOpen, setGeneratorOpen, setExportOpen } = useUi();
+  const generatorOpen = useUi((s) => s.generatorOpen);
+  const setGeneratorOpen = useUi((s) => s.setGeneratorOpen);
+  const setExportOpen = useUi((s) => s.setExportOpen);
   const [manual, setManual] = useState<{ open: boolean; code?: string }>({ open: false });
   useAutoTour("planner");
 
@@ -40,6 +41,57 @@ export function PlannerPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [editor, generatorOpen, setGeneratorOpen]);
 
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex items-center gap-3 border-b border-outline-variant/50 px-5 py-2.5">
+        <h1 className="shrink-0 text-lg font-semibold tracking-tight">Planeador</h1>
+        <div className="mx-1 h-5 w-px bg-outline-variant/70" />
+        <ScheduleTabs />
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <Tooltip content="Deshacer" shortcut={`${modKey()} Z`}>
+            <Button variant="ghost" size="icon-sm" onClick={editor.undo} aria-label="Deshacer">
+              <Undo2 />
+            </Button>
+          </Tooltip>
+          <Tooltip content="Rehacer" shortcut={`${modKey()} ⇧ Z`}>
+            <Button variant="ghost" size="icon-sm" onClick={editor.redo} aria-label="Rehacer">
+              <Redo2 />
+            </Button>
+          </Tooltip>
+          <AddBlockButton onAdd={(b) => editor.setBlocks([...(editor.active?.blocks ?? []), b])} />
+          <Button data-tour="export" variant="ghost" size="sm" onClick={() => setExportOpen(true)} disabled={!editor.resolved.length}>
+            <Download /> Exportar
+          </Button>
+          <Tooltip content="Generar combinaciones" shortcut={`${modKey()} G`}>
+            <Button data-tour="generate" size="sm" variant={generatorOpen ? "tonal" : "primary"} onClick={() => setGeneratorOpen(!generatorOpen)}>
+              <Sparkles /> Generar
+            </Button>
+          </Tooltip>
+        </div>
+      </header>
+
+      <div className="flex min-h-0 flex-1">
+        <LibraryPanel onManual={(code) => setManual({ open: true, code })} />
+
+        <PlannerBoard />
+
+        <AnimatePresence>{generatorOpen && <GeneratorPanel key="gen" />}</AnimatePresence>
+      </div>
+
+      <AddCoursesDialog />
+      <ExportDialog />
+      <GroupDetailSheet />
+      <ManualCourseDialog open={manual.open} code={manual.code} onOpenChange={(open) => setManual((m) => ({ ...m, open }))} />
+    </div>
+  );
+}
+
+/** Summary and grid: the only part of the planner that follows the hovered preview, so a hover
+ * redraws them and not the library, the header or the generator. */
+function PlannerBoard() {
+  const editor = useScheduleEditor();
+  const settings = useSettings();
+  const preview = useUi((s) => s.preview);
   const resolved = editor.resolved;
   const previewResolved = useMemo(() => (preview ? resolve(editor.index, preview) : []), [preview, editor.index]);
 
@@ -83,65 +135,25 @@ export function PlannerPage() {
   }, [resolved, events]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex items-center gap-3 border-b border-outline-variant/50 px-5 py-2.5">
-        <h1 className="shrink-0 text-lg font-semibold tracking-tight">Planeador</h1>
-        <div className="mx-1 h-5 w-px bg-outline-variant/70" />
-        <ScheduleTabs />
-        <div className="ml-auto flex shrink-0 items-center gap-1">
-          <Tooltip content="Deshacer" shortcut={`${modKey()} Z`}>
-            <Button variant="ghost" size="icon-sm" onClick={editor.undo} aria-label="Deshacer">
-              <Undo2 />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Rehacer" shortcut={`${modKey()} ⇧ Z`}>
-            <Button variant="ghost" size="icon-sm" onClick={editor.redo} aria-label="Rehacer">
-              <Redo2 />
-            </Button>
-          </Tooltip>
-          <AddBlockButton onAdd={(b) => editor.setBlocks([...(editor.active?.blocks ?? []), b])} />
-          <Button data-tour="export" variant="ghost" size="sm" onClick={() => setExportOpen(true)} disabled={!resolved.length}>
-            <Download /> Exportar
-          </Button>
-          <Tooltip content="Generar combinaciones" shortcut={`${modKey()} G`}>
-            <Button data-tour="generate" size="sm" variant={generatorOpen ? "tonal" : "primary"} onClick={() => setGeneratorOpen(!generatorOpen)}>
-              <Sparkles /> Generar
-            </Button>
-          </Tooltip>
-        </div>
-      </header>
-
-      <div className="flex min-h-0 flex-1">
-        <LibraryPanel onManual={(code) => setManual({ open: true, code })} />
-
-        <section data-tour="grid" className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-4 overflow-hidden whitespace-nowrap px-5 py-2.5 text-[12.5px] text-on-surface-variant">
-            <SummaryItem label="Créditos" value={summary.credits} />
-            <SummaryItem label="Asignaturas" value={resolved.length} />
-            <SummaryItem label="Días" value={summary.dayCount} />
-            <SummaryItem label="Horas" value={summary.hours.toFixed(summary.hours % 1 ? 1 : 0)} />
-            {summary.conflicts > 0 && (
-              <span className="flex items-center gap-1 font-medium text-error">
-                <TriangleAlert className="size-3.5" /> Cruces de horario
-              </span>
-            )}
-            {preview && previewResolved.length > 1 && <span className="ml-auto rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary">Vista previa</span>}
-          </div>
-          <div className="min-h-0 flex-1 px-3 pb-3">
-            <div className="h-full rounded-2xl border border-outline-variant/50 bg-surface-lowest px-2 dark:bg-surface-low">
-              <WeekGrid events={events} days={days} hours={hours} renderPopover={(e, trigger) => <EventPopover event={e} trigger={trigger} />} />
-            </div>
-          </div>
-        </section>
-
-        <AnimatePresence>{generatorOpen && <GeneratorPanel key="gen" />}</AnimatePresence>
-      </div>
-
-      <AddCoursesDialog />
-      <ExportDialog />
-      <GroupDetailSheet />
-      <ManualCourseDialog open={manual.open} code={manual.code} onOpenChange={(open) => setManual((m) => ({ ...m, open }))} />
+  <section data-tour="grid" className="flex min-w-0 flex-1 flex-col">
+    <div className="flex items-center gap-4 overflow-hidden whitespace-nowrap px-5 py-2.5 text-[12.5px] text-on-surface-variant">
+      <SummaryItem label="Créditos" value={summary.credits} />
+      <SummaryItem label="Asignaturas" value={resolved.length} />
+      <SummaryItem label="Días" value={summary.dayCount} />
+      <SummaryItem label="Horas" value={summary.hours.toFixed(summary.hours % 1 ? 1 : 0)} />
+      {summary.conflicts > 0 && (
+        <span className="flex items-center gap-1 font-medium text-error">
+          <TriangleAlert className="size-3.5" /> Cruces de horario
+        </span>
+      )}
+      {preview && previewResolved.length > 1 && <span className="ml-auto rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary">Vista previa</span>}
     </div>
+    <div className="min-h-0 flex-1 px-3 pb-3">
+      <div className="h-full rounded-2xl border border-outline-variant/50 bg-surface-lowest px-2 dark:bg-surface-low">
+        <WeekGrid events={events} days={days} hours={hours} renderPopover={(e, trigger) => <EventPopover event={e} trigger={trigger} />} />
+      </div>
+    </div>
+  </section>
   );
 }
 
@@ -155,7 +167,8 @@ function SummaryItem({ label, value }: { label: string; value: ReactNode }) {
 
 function EventPopover({ event: e, trigger }: { event: GridEvent; trigger: ReactNode }) {
   const editor = useScheduleEditor();
-  const { setGroupDetail, setFocusedCourse } = useUi();
+  const setGroupDetail = useUi((s) => s.setGroupDetail);
+  const setFocusedCourse = useUi((s) => s.setFocusedCourse);
   const [open, setOpen] = useState(false);
 
   if (e.kind === "block" && e.block) {

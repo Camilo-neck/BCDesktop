@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type CSSProperties, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { AlertTriangle, Lock } from "lucide-react";
 import type { ResolvedSelection } from "@/lib/data";
@@ -171,10 +171,11 @@ export function WeekGrid({
             const isToday = di === nowDay;
             return (
               <div key={d} className={cn("relative border-l border-outline-variant/40", di === 0 && "border-l-0")}>
+                {/* A compact grid never scrolls, and dozens of them can be on screen: no sticky, blurred header. */}
                 <div
                   className={cn(
-                    "sticky top-0 z-20 flex items-center justify-center bg-surface/90 backdrop-blur",
-                    compact ? "h-6 text-[10px]" : "h-[34px] text-[12px]",
+                    "flex items-center justify-center",
+                    compact ? "h-6 text-[10px]" : "sticky top-0 z-20 h-[34px] bg-surface/90 text-[12px] backdrop-blur",
                   )}
                   title={DAY_LONG[d]}
                 >
@@ -193,9 +194,9 @@ export function WeekGrid({
                     const { col, cols: n } = cols.get(e.key) ?? { col: 0, cols: 1 };
                     const top = y(Math.max(e.start, h0 * 60));
                     const h = Math.max(compact ? 6 : 18, y(Math.min(e.end, h1 * 60)) - top - 2);
-                    const card = (
-                      <EventCard key={e.key} event={e} compact={!!compact} height={h} style={{ top, height: h, left: `calc(${(col / n) * 100}% + 2px)`, width: `calc(${100 / n}% - 4px)` }} />
-                    );
+                    const style = { top, height: h, left: `calc(${(col / n) * 100}% + 2px)`, width: `calc(${100 / n}% - 4px)` };
+                    if (compact) return <CompactEvent key={e.key} event={e} style={style} />;
+                    const card = <EventCard key={e.key} event={e} height={h} style={style} />;
                     return renderPopover && e.kind !== "preview" ? (
                       <div key={e.key}>{renderPopover(e, card)}</div>
                     ) : (
@@ -212,9 +213,16 @@ export function WeekGrid({
   );
 }
 
-type CardProps = { event: GridEvent; compact: boolean; height: number } & ComponentPropsWithoutRef<typeof motion.button>;
+const eventTooltip = (e: GridEvent) => `${e.title} · ${hhmm(e.start)}–${hhmm(e.end)}${e.room ? ` · ${e.room}` : ""}`;
 
-const EventCard = forwardRef<HTMLButtonElement, CardProps>(function EventCard({ event: e, compact, height, style, className, ...rest }, ref) {
+/** A block in a small preview grid: static, since dozens of these grids can be on screen at once. */
+function CompactEvent({ event: e, style }: { event: GridEvent; style: CSSProperties }) {
+  return <div className="absolute rounded-[4px]" style={{ ...style, background: withAlpha(e.color, 0.85) }} title={eventTooltip(e)} />;
+}
+
+type CardProps = { event: GridEvent; height: number } & ComponentPropsWithoutRef<typeof motion.button>;
+
+const EventCard = forwardRef<HTMLButtonElement, CardProps>(function EventCard({ event: e, height, style, className, ...rest }, ref) {
   const isBlock = e.kind === "block";
   const isPreview = e.kind === "preview";
   const tall = height > 46;
@@ -222,15 +230,14 @@ const EventCard = forwardRef<HTMLButtonElement, CardProps>(function EventCard({ 
     <motion.button
       ref={ref}
       {...rest}
-      layout={!compact}
+      layout
       initial={isPreview ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.15 }}
       type="button"
       tabIndex={isPreview ? -1 : 0}
       className={cn(
-        "group absolute overflow-hidden rounded-lg text-left transition-shadow",
-        compact ? "rounded-[4px]" : "border-l-[3px] px-2 py-1 hover:shadow-elev2",
+        "group absolute overflow-hidden rounded-lg border-l-[3px] px-2 py-1 text-left transition-shadow hover:shadow-elev2",
         isPreview && "pointer-events-none border border-dashed",
         isBlock && "bg-[repeating-linear-gradient(135deg,rgb(var(--outline)/0.10)_0_6px,transparent_6px_12px)]",
         e.conflict && "ring-2 ring-error ring-offset-1 ring-offset-surface",
@@ -239,25 +246,21 @@ const EventCard = forwardRef<HTMLButtonElement, CardProps>(function EventCard({ 
       style={{
         ...style,
         borderColor: e.conflict ? "rgb(var(--error))" : e.color,
-        background: isBlock ? undefined : withAlpha(e.color, isPreview ? 0.1 : compact ? 0.85 : 0.16),
+        background: isBlock ? undefined : withAlpha(e.color, isPreview ? 0.1 : 0.16),
       }}
-      title={`${e.title} · ${hhmm(e.start)}–${hhmm(e.end)}${e.room ? ` · ${e.room}` : ""}`}
+      title={eventTooltip(e)}
     >
-      {!compact && (
-        <>
-          <div className="flex items-start gap-1">
-            {e.conflict && <AlertTriangle className="mt-0.5 size-3 shrink-0 text-error" />}
-            {isBlock && <Lock className="mt-0.5 size-3 shrink-0 text-on-surface-variant" />}
-            <div className={cn("text-[12px] font-semibold leading-tight text-on-surface", tall ? "line-clamp-2" : "line-clamp-1")}>{e.title}</div>
-          </div>
-          {height > 30 && (
-            <div className="tabular mt-0.5 truncate text-[10.5px] text-on-surface-variant">
-              {hhmm(e.start)}–{hhmm(e.end)} {e.subtitle && `· ${e.subtitle}`}
-            </div>
-          )}
-          {tall && e.room && <div className="mt-0.5 line-clamp-1 text-[10.5px] text-on-surface-variant/80">{e.room}</div>}
-        </>
+      <div className="flex items-start gap-1">
+        {e.conflict && <AlertTriangle className="mt-0.5 size-3 shrink-0 text-error" />}
+        {isBlock && <Lock className="mt-0.5 size-3 shrink-0 text-on-surface-variant" />}
+        <div className={cn("text-[12px] font-semibold leading-tight text-on-surface", tall ? "line-clamp-2" : "line-clamp-1")}>{e.title}</div>
+      </div>
+      {height > 30 && (
+        <div className="tabular mt-0.5 truncate text-[10.5px] text-on-surface-variant">
+          {hhmm(e.start)}–{hhmm(e.end)} {e.subtitle && `· ${e.subtitle}`}
+        </div>
       )}
+      {tall && e.room && <div className="mt-0.5 line-clamp-1 text-[10.5px] text-on-surface-variant/80">{e.room}</div>}
     </motion.button>
   );
 });
