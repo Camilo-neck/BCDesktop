@@ -6,6 +6,7 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Agregado
 
+- La app se actualiza desde GitHub. Al abrirla busca una versión nueva y pregunta si quieres instalarla; la descarga, la instala y se reinicia sola, sin perder tus datos. También puedes buscar actualizaciones desde Ajustes, Acerca de o la paleta de comandos, o activar «Actualizar automáticamente» en Ajustes para que se descarguen sin preguntar y se instalen al cerrar la app. Funciona a partir de esta versión: quien tenga la 0.1.0 debe instalarla a mano una vez.
 - El indicador de progreso de las tareas largas se puede minimizar a un círculo en la esquina, con el porcentaje, y al terminar muestra «Listo» por un momento.
 
 ### Corregido

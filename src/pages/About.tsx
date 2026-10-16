@@ -10,6 +10,7 @@ import juanP from "@/assets/team/JuanPalacios.webp";
 import reinaldo from "@/assets/team/ReinaldoToledo.webp";
 import samuel from "@/assets/team/SamuelGomez1.webp";
 import { api } from "@/lib/api";
+import { checkForUpdates, useUpdater } from "@/lib/updater";
 
 const TEAM = [
   { name: "Camilo Cuello", role: "Cofundador · Fullstack", photo: camilo, github: "https://github.com/Camilo-neck" },
@@ -28,6 +29,7 @@ const LINKS = [
 
 export function AboutPage() {
   const info = useQuery({ queryKey: ["appInfo"], queryFn: api.appInfo, staleTime: Infinity });
+  const checking = useUpdater((s) => s.phase === "checking");
   return (
     <div className="scroll-thin flex-1 overflow-y-auto">
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-8 py-10">
@@ -37,7 +39,12 @@ export function AboutPage() {
             <h1 className="text-3xl font-semibold tracking-tight">
               Better<span className="text-primary">Campus</span>
             </h1>
-            <p className="mt-1 text-sm text-on-surface-variant">Versión {info.data?.version ?? "—"} para escritorio</p>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              Versión {info.data?.version ?? "—"} para escritorio ·{" "}
+              <button onClick={() => void checkForUpdates(true)} disabled={checking} className="font-medium text-primary hover:underline disabled:opacity-60">
+                {checking ? "Buscando…" : "Buscar actualizaciones"}
+              </button>
+            </p>
             <div className="mt-2 flex gap-3">
               {LINKS.map((l) => (
                 <button key={l.url} onClick={() => openUrl(l.url)} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
@@ -59,7 +66,8 @@ export function AboutPage() {
             <div className="font-semibold">Tus datos se quedan contigo</div>
             <p className="mt-1 text-on-surface-variant">
               No hay cuenta ni servidor intermedio. Tu historia académica, tus horarios y tus favoritos viven en una base de datos local. Solo se contacta al
-              SIA, a LosEstudiantes para reseñas de profesores, a la API pública de cupos de BetterCampus y, si lo conectas, a Google Calendar.
+              SIA, a LosEstudiantes para reseñas de profesores, a la API pública de cupos de BetterCampus, a GitHub para buscar actualizaciones y, si lo
+              conectas, a Google Calendar.
             </p>
           </div>
         </div>

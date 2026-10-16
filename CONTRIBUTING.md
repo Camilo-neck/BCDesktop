@@ -25,7 +25,7 @@ Para trabajar solo en la interfaz no hace falta compilar Rust:
 npm run dev              # http://localhost:1420, con datos reales guardados en src/dev/fixtures
 ```
 
-Parámetros de la URL en este modo: `?tours=on` muestra los tutoriales, `?empty` arranca con el horario vacío, `?nohistory` sin historia académica, `?open=gen|add|export|palette` abre ese panel.
+Parámetros de la URL en este modo: `?tours=on` muestra los tutoriales, `?empty` arranca con el horario vacío, `?nohistory` sin historia académica, `?open=gen|add|export|palette` abre ese panel, `?update` simula una actualización disponible.
 
 ## Organización del código
 

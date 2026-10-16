@@ -41,6 +41,7 @@ const PUBLIC_KEYS: &[&str] = &[
     "weekStart",
     "gridHours",
     "showWeekend",
+    "autoUpdate",
     "term",
     "onboarded",
     "activeScheduleId",

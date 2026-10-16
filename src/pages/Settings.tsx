@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { CalendarDays, Database, FolderOpen, Laptop, Moon, Palette, Plug, RotateCcw, Sun, Trash2 } from "lucide-react";
+import { CalendarDays, Database, FolderOpen, Laptop, Moon, Palette, Plug, RefreshCw, RotateCcw, Sun, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Segmented } from "@/components/ui/misc";
@@ -12,6 +12,7 @@ import { TOURS, type TourId } from "@/components/tour/tours";
 import { api, errorMessage } from "@/lib/api";
 import { useSetSetting, useSettings, type Theme } from "@/lib/settings";
 import { careerKey } from "@/components/planner/CareerPicker";
+import { checkForUpdates, downloadInBackground, useUpdater, type UpdatePhase } from "@/lib/updater";
 
 const TOUR_NAMES: Record<TourId, string> = {
   welcome: "Bienvenida",
@@ -54,6 +55,55 @@ function Row({ title, hint, children }: { title: string; hint?: ReactNode; child
       </div>
       <div className="shrink-0">{children}</div>
     </div>
+  );
+}
+
+function updateHint(phase: UpdatePhase, version: string | undefined, upToDate: boolean, pct: number) {
+  switch (phase) {
+    case "checking":
+      return "Buscando actualizaciones…";
+    case "available":
+      return `La versión ${version} está disponible.`;
+    case "downloading":
+      return `Descargando la versión ${version}${pct ? ` · ${pct} %` : "…"}`;
+    case "ready":
+      return `La versión ${version} se instalará al cerrar la app.`;
+    case "installing":
+      return "Instalando…";
+    default:
+      return upToDate ? "Tienes la última versión." : "Las nuevas versiones se publican en GitHub.";
+  }
+}
+
+function UpdatesSection() {
+  const s = useSettings();
+  const set = useSetSetting();
+  const info = useQuery({ queryKey: ["appInfo"], queryFn: api.appInfo, staleTime: Infinity });
+  const { phase, update, received, total, upToDateAt, setDialogOpen } = useUpdater();
+  const pct = total ? Math.round((received / total) * 100) : 0;
+  return (
+    <Section id="updates" icon={<RefreshCw />} title="Actualizaciones">
+      <Row title={`BetterCampus ${info.data?.version ?? ""}`} hint={updateHint(phase, update?.version, !!upToDateAt, pct)}>
+        {update ? (
+          <Button variant="tonal" size="sm" onClick={() => setDialogOpen(true)}>
+            Ver actualización
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" loading={phase === "checking"} onClick={() => void checkForUpdates(true)}>
+            Buscar actualizaciones
+          </Button>
+        )}
+      </Row>
+      <Row title="Actualizar automáticamente" hint="Descarga las nuevas versiones en segundo plano y las instala al cerrar la app, sin preguntar.">
+        <Switch
+          checked={s.autoUpdate}
+          onCheckedChange={async (v) => {
+            await set("autoUpdate", v);
+            if (v) void downloadInBackground();
+          }}
+        />
+      </Row>
+    </Section>
   );
 }
 
@@ -168,6 +218,8 @@ export function SettingsPage() {
             <p className="mt-1.5 text-xs text-on-surface-variant">El histórico de cupos lo recolecta el servidor de BetterCampus; la app solo lo consulta.</p>
           </div>
         </Section>
+
+        <UpdatesSection />
 
         <Section icon={<RotateCcw />} title="Tutoriales" description="Repite el recorrido guiado de cualquier función.">
           <div className="grid grid-cols-2 gap-2">

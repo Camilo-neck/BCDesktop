@@ -28,6 +28,7 @@ BetterCampus consulta la oferta del SIA, arma tu horario sin choques, analiza tu
 - **Exportar** el horario a Google Calendar o a un archivo `.ics` (Outlook, Apple Calendar).
 - **Profesores**: reseñas de LosEstudiantes e historial de cómo se agotan los cupos de cada grupo.
 - Tutorial guiado la primera vez que usas cada función, paleta de comandos (`Ctrl K`) y tema claro/oscuro.
+- **Actualizaciones**: la app avisa cuando hay una versión nueva y se actualiza sola. También puede instalarlas automáticamente al cerrarse.
 
 <table>
   <tr>
@@ -51,6 +52,8 @@ Descarga el instalador para tu sistema en [Releases](https://github.com/Camilo-n
 | Linux | `.AppImage`, `.deb` o `.rpm` |
 
 Los instaladores todavía no están firmados. La primera vez, Windows muestra «Windows protegió su PC»: elige *Más información › Ejecutar de todas formas*. En macOS, abre la app con clic derecho › *Abrir*.
+
+Desde la versión 0.2.0 no hace falta volver a descargar el instalador: la app busca versiones nuevas al abrirse y se actualiza desde *Ajustes › Actualizaciones*.
 
 ## Desarrollo
 

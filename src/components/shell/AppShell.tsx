@@ -23,6 +23,7 @@ import { useUi } from "@/lib/store";
 import { cn, modKey } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
 import { ProgressPill } from "./ProgressPill";
+import { UpdateDialog } from "./UpdateDialog";
 
 const NAV = [
   { to: "/", label: "Inicio", icon: House, hotkey: "1" },
@@ -196,6 +197,7 @@ export function AppShell() {
         <ProgressPill />
       </main>
       <CommandPalette />
+      <UpdateDialog />
     </div>
   );
 }

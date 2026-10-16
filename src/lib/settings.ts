@@ -14,6 +14,8 @@ export interface Settings {
   tours: Record<string, boolean>;
   gridHours: [number, number];
   showWeekend: boolean;
+  /** Download new versions in the background and install them when the app closes, without asking. */
+  autoUpdate: boolean;
   term: Term;
   onboarded: boolean;
   activeScheduleId: string | null;
@@ -37,6 +39,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tours: {},
   gridHours: [6, 22],
   showWeekend: true,
+  autoUpdate: false,
   term: defaultTerm(),
   onboarded: false,
   activeScheduleId: null,
