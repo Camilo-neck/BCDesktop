@@ -4,10 +4,16 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 
 ## [Sin publicar]
 
+## [0.2.0] - 2026-10-16
+
 ### Agregado
 
 - La app se actualiza desde GitHub. Al abrirla busca una versión nueva y pregunta si quieres instalarla; la descarga, la instala y se reinicia sola, sin perder tus datos. También puedes buscar actualizaciones desde Ajustes, Acerca de o la paleta de comandos, o activar «Actualizar automáticamente» en Ajustes para que se descarguen sin preguntar y se instalen al cerrar la app. Funciona a partir de esta versión: quien tenga la 0.1.0 debe instalarla a mano una vez.
 - El indicador de progreso de las tareas largas se puede minimizar a un círculo en la esquina, con el porcentaje, y al terminar muestra «Listo» por un momento.
+
+### Cambiado
+
+- **Cambio de licencia:** el proyecto pasa de MIT a [PolyForm Noncommercial 1.0.0](LICENSE). El código sigue siendo público, pero cualquier uso comercial requiere autorización previa y por escrito de los mantenedores. Las versiones hasta la 0.1.0 siguen bajo MIT.
 
 ### Eliminado
 
@@ -30,10 +36,6 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 - En «Mi avance», los créditos vistos de más en una tipología (por ejemplo 36 de 33 en libre elección) se siguen mostrando, pero ya no inflan el porcentaje de esa tipología ni la gráfica de avance acumulado.
 - La app ya no se congela al pasar el mouse por las opciones del generador de horarios ni por los grupos de la biblioteca.
 
-### Cambiado
-
-- **Cambio de licencia:** el proyecto pasa de MIT a [PolyForm Noncommercial 1.0.0](LICENSE). El código sigue siendo público, pero cualquier uso comercial requiere autorización previa y por escrito de los mantenedores. Las versiones hasta la 0.1.0 siguen bajo MIT.
-
 ## [0.1.0] - 2026-10-11
 
 Primera versión de escritorio, construida sobre Tauri 2, React y un núcleo en Rust.
@@ -53,5 +55,6 @@ Primera versión de escritorio, construida sobre Tauri 2, React y un núcleo en 
 - Persistencia local en SQLite con migraciones.
 - CI en Linux y Windows; releases para Linux, Windows (NSIS y MSI) y macOS.
 
-[Sin publicar]: https://github.com/Camilo-neck/BCDesktop/compare/v0.1.0...HEAD
+[Sin publicar]: https://github.com/Camilo-neck/BCDesktop/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Camilo-neck/BCDesktop/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Camilo-neck/BCDesktop/releases/tag/v0.1.0
