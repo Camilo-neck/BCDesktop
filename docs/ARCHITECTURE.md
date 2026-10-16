@@ -57,7 +57,11 @@ Detalles a tener en cuenta:
 1. Cada grupo candidato se reduce una vez a un `WeekMask`; dos grupos chocan si sus máscaras se intersectan.
 2. Los filtros (días, franja, bloques personales, cupos, excluidos) se aplican como una máscara de "prohibido". Los grupos fijados ignoran los filtros.
 3. Las materias se ordenan por cantidad de candidatos, de menor a mayor (fail-first).
-4. Búsqueda en profundidad con la unión de máscaras acumulada, poda por créditos y un tope de 4 millones de nodos.
+4. Búsqueda en profundidad con la unión de máscaras acumulada y dos podas:
+   - Por créditos: se descarta una rama si, tomando primero las materias restantes más baratas, no caben tantas como en la mejor combinación encontrada.
+   - Por puntaje: con los `limit` mejores ya guardados (paso 5), se descarta una rama si una cota inferior de su puntaje no mejora al peor guardado. La cota usa que los días con clase, las horas fuera de la jornada y la penalización por cupos solo crecen al agregar materias, que los favoritos crecen como mucho en las materias restantes que tienen uno, y que los huecos de cada día bajan como mucho lo que esas materias pueden llenar ese día. Nunca descarta un horario que habría quedado entre los mejores.
+
+   Si la búsqueda supera 2 segundos, se detiene, devuelve lo mejor encontrado y la interfaz lo avisa.
 5. Se conserva un heap acotado con los `limit` mejores según el puntaje: huecos, días con clase, horas fuera de la jornada preferida, favoritos y cupos escasos.
 6. Si ninguna combinación incluye todas las materias, se repite permitiendo omitir materias y se maximiza cuántas entran.
 

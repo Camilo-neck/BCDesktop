@@ -18,6 +18,7 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 - El tutorial de «Agregar asignaturas» ya se puede avanzar y cerrar, y los clics ya no atraviesan su fondo hacia la ventana de atrás.
 - Un clic fuera de la tarjeta ya no salta el tutorial. Al omitirlo, la app indica dónde repetirlo.
 - La app ya no parpadea al cambiar de sección, y los datos y gráficos de «Mi avance» ya no parpadean al abrirla.
+- El generador de horarios responde casi al instante y muestra las mejores combinaciones posibles. Antes podía tardar minutos con asignaturas de muchos grupos y solo revisaba una parte de las combinaciones. Si el cálculo supera el tiempo límite, muestra las mejores opciones encontradas y lo avisa.
 - El indicador de progreso ya no queda escondido detrás de las ventanas (descargar el plan, agregar asignaturas, exportar), y su botón de cancelar funciona aunque haya una ventana abierta.
 - Descargar un plan de estudios ya no bloquea la ventana durante la descarga: se cierra al empezar y el progreso sigue en el indicador.
 - Si una tarea larga falla a mitad de camino, el indicador de progreso ya no queda pegado en pantalla.
