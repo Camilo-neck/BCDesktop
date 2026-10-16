@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge, EmptyState, Input, Skeleton, TypologyBadge } from "@/components/ui/misc";
 import { Confirm, Select, Switch } from "@/components/ui/primitives";
-import { CareerPicker } from "@/components/planner/CareerPicker";
+import { CareerPicker, careerKey } from "@/components/planner/CareerPicker";
 import { GraphView } from "@/components/curriculum/GraphView";
 import { useAutoTour } from "@/components/tour/Tour";
 import { api, errorMessage } from "@/lib/api";
 import { useSettings } from "@/lib/settings";
-import type { CareerRef, CurriculumGraph, GraphNode } from "@/lib/types";
+import type { CareerRef, CurriculumGraph, GraphNode, PlanSummary } from "@/lib/types";
 import { normalizeText, relativeTime } from "@/lib/utils";
 
 const CONDITION_TEXT: Record<string, string> = {
@@ -37,6 +37,7 @@ export function CurriculumPage() {
   const [focus, setFocus] = useState<string | null>(null);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   useAutoTour("curriculum", plans.isSuccess);
 
   useEffect(() => {
@@ -155,7 +156,7 @@ export function CurriculumPage() {
                   Haz clic en una materia para ver sus condiciones y lo que habilita. Las líneas punteadas son correquisitos o condiciones de “alguna de”.
                 </p>
                 <div className="mt-auto flex gap-2 pt-4">
-                  <Button variant="ghost" size="sm" onClick={() => plan && refetchPlan(plan.careerKey)}>
+                  <Button variant="ghost" size="sm" loading={refreshing} onClick={() => plan && refetchPlan(plan.careerKey)}>
                     <CloudDownload /> Actualizar
                   </Button>
                   <Button variant="ghost" size="sm" className="text-error" onClick={() => setConfirmDelete(true)}>
@@ -172,6 +173,8 @@ export function CurriculumPage() {
         open={downloadOpen}
         onOpenChange={setDownloadOpen}
         initial={settings.defaultCareer}
+        downloaded={plans.data ?? []}
+        onOpen={(key) => (setPlanKey(key), setSelected(null))}
         onDone={async (key) => {
           await qc.invalidateQueries({ queryKey: ["plans"] });
           await qc.invalidateQueries({ queryKey: ["graph"] });
@@ -197,6 +200,8 @@ export function CurriculumPage() {
 
   async function refetchPlan(key: string) {
     const [level, campus, faculty, planCode] = key.split("-");
+    // One download at a time: the button stays disabled until this one ends.
+    setRefreshing(true);
     try {
       await api.fetchPlan({ level, campus, faculty, plan: planCode, name: plan?.careerName ?? "", electives: false });
       await qc.invalidateQueries({ queryKey: ["graph"] });
@@ -204,6 +209,8 @@ export function CurriculumPage() {
       toast.success("Plan actualizado");
     } catch (e) {
       toast.error("No se pudo actualizar el plan", { description: errorMessage(e) });
+    } finally {
+      setRefreshing(false);
     }
   }
 }
@@ -309,15 +316,21 @@ function DownloadPlanDialog({
   open,
   onOpenChange,
   initial,
+  downloaded,
+  onOpen,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial: CareerRef | null;
+  downloaded: PlanSummary[];
+  onOpen: (key: string) => void;
   onDone: (key: string) => Promise<void>;
 }) {
   const [career, setCareer] = useState<CareerRef | null>(initial ? { ...initial, electives: false } : null);
   const [busy, setBusy] = useState(false);
+  // A plan already on disk opens right away: downloading it again takes up to a minute of SIA requests.
+  const saved = career ? downloaded.find((p) => p.careerKey === careerKey({ ...career, electives: false })) : undefined;
   const run = async () => {
     if (!career) return;
     setBusy(true);
@@ -341,14 +354,27 @@ function DownloadPlanDialog({
           <DialogTitle>Descargar plan de estudios</DialogTitle>
           <DialogDescription>Se consultan los prerrequisitos de cada asignatura del plan en el SIA.</DialogDescription>
         </DialogHeader>
-        <div className="px-6 pb-5">{open && <CareerPicker value={career} onChange={setCareer} allowElectives={false} />}</div>
+        <div className="px-6 pb-5">
+          {open && <CareerPicker value={career} onChange={setCareer} allowElectives={false} />}
+          {saved && (
+            <p className="mt-3 text-xs text-on-surface-variant">
+              Ya lo descargaste {relativeTime(saved.fetchedAt)}. Para traer los cambios del SIA, ábrelo y usa «Actualizar».
+            </p>
+          )}
+        </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={run} loading={busy} disabled={!career}>
-            <CloudDownload /> Descargar
-          </Button>
+          {saved ? (
+            <Button onClick={() => (onOpenChange(false), onOpen(saved.careerKey))}>
+              <Waypoints /> Abrir
+            </Button>
+          ) : (
+            <Button onClick={run} loading={busy} disabled={!career}>
+              <CloudDownload /> Descargar
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

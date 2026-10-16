@@ -35,6 +35,7 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 - Si una tarea larga falla a mitad de camino, el indicador de progreso ya no queda pegado en pantalla.
 - En «Mi avance», los créditos vistos de más en una tipología (por ejemplo 36 de 33 en libre elección) se siguen mostrando, pero ya no inflan el porcentaje de esa tipología ni la gráfica de avance acumulado.
 - La app ya no se congela al pasar el mouse por las opciones del generador de horarios ni por los grupos de la biblioteca.
+- En el plan de estudios, elegir en «Otro plan» uno que ya descargaste lo abre al instante en lugar de descargarlo de nuevo. Para traer sus cambios del SIA sigue estando «Actualizar», que ahora muestra que está trabajando y no se puede pulsar dos veces.
 
 ## [0.1.0] - 2026-10-11
 
