@@ -7,9 +7,6 @@ export type Theme = "light" | "dark" | "system";
 export interface Settings {
   theme: Theme;
   defaultCareer: CareerRef | null;
-  statsApiUrl: string;
-  googleClientId: string;
-  googleClientSecret: string;
   /** Tour id -> completed. */
   tours: Record<string, boolean>;
   gridHours: [number, number];
@@ -31,9 +28,6 @@ function defaultTerm(): Term {
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   defaultCareer: null,
-  statsApiUrl: "",
-  googleClientId: "",
-  googleClientSecret: "",
   tours: {},
   gridHours: [6, 22],
   showWeekend: true,

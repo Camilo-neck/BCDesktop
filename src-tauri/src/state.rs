@@ -10,8 +10,8 @@ use bc_core::{Error, Result};
 const KEYRING_SERVICE: &str = "co.com.bettercampus.desktop";
 const KEYRING_USER: &str = "google-refresh-token";
 
-/// Default stats API; can be overridden in Settings or at build time.
-pub const DEFAULT_STATS_API: &str = match option_env!("BC_STATS_API_URL") {
+/// Stats API base URL, set at build time (see docs/RELEASING.md).
+pub const STATS_API: &str = match option_env!("BC_STATS_API_URL") {
     Some(u) => u,
     None => "",
 };
@@ -51,28 +51,13 @@ impl AppState {
         self.db.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    pub fn setting_string(&self, key: &str) -> Option<String> {
-        self.db()
-            .setting::<String>(key)
-            .ok()
-            .flatten()
-            .filter(|s| !s.trim().is_empty())
-    }
-
-    pub fn stats_api(&self) -> String {
-        self.setting_string("statsApiUrl")
-            .unwrap_or_else(|| DEFAULT_STATS_API.to_owned())
-    }
-
+    /// Google OAuth client, set at build time (see docs/RELEASING.md).
     pub fn google_client(&self) -> ClientConfig {
         ClientConfig {
-            client_id: self
-                .setting_string("googleClientId")
-                .or_else(|| option_env!("BC_GOOGLE_CLIENT_ID").map(str::to_owned))
-                .unwrap_or_default(),
-            client_secret: self
-                .setting_string("googleClientSecret")
-                .or_else(|| option_env!("BC_GOOGLE_CLIENT_SECRET").map(str::to_owned)),
+            client_id: option_env!("BC_GOOGLE_CLIENT_ID")
+                .unwrap_or_default()
+                .to_owned(),
+            client_secret: option_env!("BC_GOOGLE_CLIENT_SECRET").map(str::to_owned),
         }
     }
 

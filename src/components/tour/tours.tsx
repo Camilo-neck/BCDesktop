@@ -43,7 +43,7 @@ export const TOURS: Record<TourId, TourStep[]> = {
       target: "settings",
       placement: "right",
       title: "Ajustes",
-      body: "Tema, horas de la grilla, fechas del semestre, Google Calendar y la opción de repetir estos tutoriales.",
+      body: "Tema, horas de la grilla, fechas del semestre y la opción de repetir estos tutoriales.",
     },
   ],
   planner: [

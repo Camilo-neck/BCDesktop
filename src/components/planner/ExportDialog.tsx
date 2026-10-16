@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { save } from "@tauri-apps/plugin-dialog";
-import { CalendarDays, Check, FileDown, LogOut, Settings2 } from "lucide-react";
-import { useNavigate } from "react-router";
+import { CalendarDays, Check, FileDown, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,7 +19,6 @@ export function ExportDialog() {
   const { active } = useActiveSchedule();
   const settings = useSettings();
   const setSetting = useSetSetting();
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const [busy, setBusy] = useState<"ics" | "google" | "connect" | null>(null);
   const term = settings.term;
@@ -28,7 +26,7 @@ export function ExportDialog() {
   const account = useQuery({ queryKey: ["google"], queryFn: api.googleStatus, enabled: exportOpen });
 
   const setTerm = (patch: Partial<Term>) => setSetting("term", { ...term, ...patch });
-  const googleReady = info.data?.googleConfigured || !!settings.googleClientId;
+  const googleReady = !!info.data?.googleConfigured;
 
   const exportIcs = async () => {
     if (!active) return;
@@ -114,12 +112,9 @@ export function ExportDialog() {
               <CalendarDays className="mb-2 size-5 text-primary" />
               <div className="text-[14px] font-semibold">Google Calendar</div>
               {!googleReady ? (
-                <>
-                  <p className="mb-3 mt-1 flex-1 text-xs text-on-surface-variant">Falta configurar el Client ID de Google para esta instalación.</p>
-                  <Button variant="outline" onClick={() => (setExportOpen(false), navigate("/settings#google"))}>
-                    <Settings2 /> Configurar
-                  </Button>
-                </>
+                <p className="mt-1 flex-1 text-xs text-on-surface-variant">
+                  Todavía no está disponible en esta versión. Mientras tanto, guarda el archivo .ics e impórtalo en Google Calendar.
+                </p>
               ) : account.data ? (
                 <>
                   <div className="mb-3 mt-2 flex flex-1 items-center gap-2">

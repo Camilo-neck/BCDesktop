@@ -14,7 +14,7 @@ use tauri::{AppHandle, State};
 use tauri_plugin_opener::OpenerExt;
 
 use super::{emit_progress, CmdResult};
-use crate::state::AppState;
+use crate::state::{AppState, STATS_API};
 
 #[tauri::command]
 pub async fn professor_lookup(
@@ -40,8 +40,7 @@ pub async fn stats_inscriptions(
     if let Some(hit) = state.db().cache_get::<Value>(&key)? {
         return Ok(hit);
     }
-    let base = state.stats_api();
-    let v = stats::inscription_stats(&state.http, &base, &career_name, &course_code).await?;
+    let v = stats::inscription_stats(&state.http, STATS_API, &career_name, &course_code).await?;
     state.db().cache_put(&key, &v, Duration::hours(12))?;
     Ok(v)
 }

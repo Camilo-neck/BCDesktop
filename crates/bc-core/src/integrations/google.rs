@@ -124,7 +124,7 @@ pub async fn authorize(
 ) -> Result<(Tokens, Account)> {
     if cfg.client_id.trim().is_empty() {
         return Err(Error::Auth(
-            "Falta el Client ID de Google. Configúralo en Ajustes › Integraciones.".into(),
+            "Google Calendar no está disponible en esta versión de la app.".into(),
         ));
     }
     let listener = TcpListener::bind("127.0.0.1:0").await?;

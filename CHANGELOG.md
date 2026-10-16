@@ -8,6 +8,10 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 
 - El indicador de progreso de las tareas largas se puede minimizar a un círculo en la esquina, con el porcentaje, y al terminar muestra «Listo» por un momento.
 
+### Eliminado
+
+- Se quitó la sección «Integraciones» de Ajustes. Las credenciales de Google Calendar y la URL de la API de cupos ahora se definen solo al compilar la app. Si una versión no las incluye, Google Calendar y el histórico de cupos aparecen como no disponibles.
+
 ### Corregido
 
 - Con «Fijar elegidos», el generador ya no deja fuera una materia fijada cuando no caben todas. Si dos materias fijadas se cruzan o el grupo fijado ya no se ofrece, lo indica con el motivo.

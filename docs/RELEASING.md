@@ -37,7 +37,7 @@ npm run tauri build -- --runner cargo-xwin --target x86_64-pc-windows-msvc
 
 ## Variables y secrets del repositorio
 
-Se configuran en *Settings › Secrets and variables › Actions*. Todas son opcionales: sin ellas, la función correspondiente se configura desde Ajustes dentro de la app.
+Se configuran en *Settings › Secrets and variables › Actions*. Se incrustan en el binario al compilar; la app no permite cambiarlas. Si falta alguna, la función correspondiente aparece como no disponible.
 
 | Nombre | Tipo | Uso |
 | --- | --- | --- |
@@ -47,5 +47,10 @@ Se configuran en *Settings › Secrets and variables › Actions*. Todas son opc
 
 ## Pendiente para versiones futuras
 
+- **TO-DO · Integraciones**: configurar en el repositorio las variables y secrets de la tabla anterior para que los releases incluyan Google Calendar y el histórico de cupos. Sin ellas, los instaladores publicados solo exportan a `.ics`. Pasos:
+  1. En Google Cloud Console, crear el proyecto de BetterCampus y habilitar la Google Calendar API.
+  2. Configurar la pantalla de consentimiento OAuth con el alcance `calendar.app.created` y enviarla a verificación de Google. Mientras no esté verificada, solo funciona para los usuarios de prueba.
+  3. Crear un cliente OAuth de tipo «App de escritorio» y guardar su ID y su secret como `BC_GOOGLE_CLIENT_ID` y `BC_GOOGLE_CLIENT_SECRET`.
+  4. Definir `BC_STATS_API_URL` con la URL pública de la API de cupos.
 - **Firma de código**: sin certificado, Windows SmartScreen y macOS Gatekeeper muestran una advertencia al primer arranque. Para Windows se puede usar un certificado OV/EV o Azure Trusted Signing. Para macOS, una cuenta de Apple Developer más notarización. Ambos se configuran en `tauri-action` con secrets.
 - **Actualizaciones automáticas**: agregar `tauri-plugin-updater`, generar un par de llaves con `npm run tauri signer generate`, poner la llave pública en `tauri.conf.json`, guardar `TAURI_SIGNING_PRIVATE_KEY` como secret y activar `createUpdaterArtifacts`.
