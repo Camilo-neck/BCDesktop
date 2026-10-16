@@ -14,7 +14,7 @@ pub async fn inscription_stats(
     let base = base_url.trim_end_matches('/');
     if base.is_empty() {
         return Err(Error::Invalid(
-            "Configura la URL de la API de estadísticas en Ajustes.".into(),
+            "El histórico de cupos no está disponible en esta versión de la app.".into(),
         ));
     }
     let res = http

@@ -6,7 +6,7 @@ use tauri::Manager;
 use commands::*;
 
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         // Must be registered first: a second launch focuses the running window and exits.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
@@ -28,7 +28,15 @@ pub fn run() {
         )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_window_state::Builder::default().build());
+
+    // Updates come from GitHub Releases (`plugins.updater` in tauri.conf.json); the frontend drives them.
+    #[cfg(desktop)]
+    let builder = builder
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init());
+
+    builder
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             let state = state::AppState::new(dir).map_err(|e| e.to_string())?;

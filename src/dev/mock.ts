@@ -9,6 +9,7 @@ import { PALETTE } from "@/lib/palette";
 import type { AcademicHistory, Course, CurriculumGraph, GenerateRequest, GenerateResult, Library, Schedule, Selection } from "@/lib/types";
 import { groupsCollide } from "@/lib/utils";
 import { useUi } from "@/lib/store";
+import type { UpdateHandle } from "@/lib/updater";
 
 const params = new URLSearchParams(window.location.search);
 const now = () => new Date().toISOString();
@@ -85,7 +86,7 @@ function naiveGenerate(req: GenerateRequest): GenerateResult {
 type Args = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const handlers: Record<string, (a: Args) => unknown> = {
-  app_info: () => ({ version: "0.1.0-dev", dataDir: "~/.local/share/co.com.bettercampus.desktop", os: "linux", arch: "x86_64", defaultStatsApi: "", googleConfigured: false }),
+  app_info: () => ({ version: "0.1.0-dev", dataDir: "~/.local/share/co.com.bettercampus.desktop", os: "linux", arch: "x86_64", googleConfigured: false }),
   settings_get: () => settings,
   settings_set: (a) => void (settings[a.key] = a.value),
   cache_clear: () => 12,
@@ -178,4 +179,24 @@ export async function mockInvoke<T>(cmd: string, args?: Args): Promise<T> {
   const h = handlers[cmd];
   if (!h) throw { kind: "external", message: `mock: ${cmd} no implementado` };
   return structuredClone(h(args ?? {})) as T;
+}
+
+/** Fake release for `?update`: an 8 MB download in about two seconds; installing reloads the page. */
+export function mockUpdate(): UpdateHandle {
+  const total = 8 * 1024 * 1024;
+  return {
+    version: "0.2.0",
+    currentVersion: "0.1.0",
+    async download(onEvent) {
+      onEvent?.({ event: "Started", data: { contentLength: total } });
+      for (let sent = 0; sent < total; sent += total / 20) {
+        await delay(100);
+        onEvent?.({ event: "Progress", data: { chunkLength: total / 20 } });
+      }
+      onEvent?.({ event: "Finished" });
+    },
+    async install() {
+      await delay(800);
+    },
+  };
 }

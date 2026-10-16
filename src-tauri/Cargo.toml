@@ -31,3 +31,8 @@ reqwest.workspace = true
 chrono.workspace = true
 log.workspace = true
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process = "2"
+# Sin `zip`: solo sirve para los paquetes comprimidos de Tauri v1 y sus versiones 4.x fueron retiradas de crates.io.
+tauri-plugin-updater = { version = "2.14", default-features = false, features = ["rustls-tls", "system-proxy"] }

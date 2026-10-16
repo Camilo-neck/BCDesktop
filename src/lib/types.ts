@@ -298,7 +298,6 @@ export interface AppInfo {
   dataDir: string;
   os: string;
   arch: string;
-  defaultStatsApi: string;
   googleConfigured: boolean;
 }
 

@@ -5,7 +5,7 @@ use serde_json::{Map, Value};
 use tauri::State;
 
 use super::CmdResult;
-use crate::state::{AppState, DEFAULT_STATS_API};
+use crate::state::AppState;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,7 +14,6 @@ pub struct AppInfo {
     pub data_dir: String,
     pub os: &'static str,
     pub arch: &'static str,
-    pub default_stats_api: &'static str,
     pub google_configured: bool,
 }
 
@@ -25,7 +24,6 @@ pub fn app_info(state: State<'_, AppState>) -> AppInfo {
         data_dir: state.data_dir.display().to_string(),
         os: std::env::consts::OS,
         arch: std::env::consts::ARCH,
-        default_stats_api: DEFAULT_STATS_API,
         google_configured: !state.google_client().client_id.is_empty(),
     }
 }
@@ -34,13 +32,11 @@ pub fn app_info(state: State<'_, AppState>) -> AppInfo {
 const PUBLIC_KEYS: &[&str] = &[
     "theme",
     "defaultCareer",
-    "statsApiUrl",
-    "googleClientId",
-    "googleClientSecret",
     "tours",
     "weekStart",
     "gridHours",
     "showWeekend",
+    "autoUpdate",
     "term",
     "onboarded",
     "activeScheduleId",

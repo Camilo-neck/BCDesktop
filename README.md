@@ -28,6 +28,7 @@ BetterCampus consulta la oferta del SIA, arma tu horario sin choques, analiza tu
 - **Exportar** el horario a Google Calendar o a un archivo `.ics` (Outlook, Apple Calendar).
 - **Profesores**: reseñas de LosEstudiantes e historial de cómo se agotan los cupos de cada grupo.
 - Tutorial guiado la primera vez que usas cada función, paleta de comandos (`Ctrl K`) y tema claro/oscuro.
+- **Actualizaciones**: la app avisa cuando hay una versión nueva y se actualiza sola. También puede instalarlas automáticamente al cerrarse.
 
 <table>
   <tr>
@@ -51,6 +52,8 @@ Descarga el instalador para tu sistema en [Releases](https://github.com/Camilo-n
 | Linux | `.AppImage`, `.deb` o `.rpm` |
 
 Los instaladores todavía no están firmados. La primera vez, Windows muestra «Windows protegió su PC»: elige *Más información › Ejecutar de todas formas*. En macOS, abre la app con clic derecho › *Abrir*.
+
+Desde la versión 0.2.0 no hace falta volver a descargar el instalador: la app busca versiones nuevas al abrirse y se actualiza desde *Ajustes › Actualizaciones*.
 
 ## Desarrollo
 
@@ -101,12 +104,16 @@ La [guía de arquitectura](docs/ARCHITECTURE.md) explica cómo se habla con el S
 
 ## Configuración
 
-| Variable al compilar | Ajuste en la app | Para qué |
-| --- | --- | --- |
-| `BC_GOOGLE_CLIENT_ID`, `BC_GOOGLE_CLIENT_SECRET` | Ajustes › Integraciones | Exportar a Google Calendar |
-| `BC_STATS_API_URL` | Ajustes › Integraciones | Histórico de cupos (`POST {url}/InscriptionStats/`) |
+Las integraciones externas se configuran **al compilar**, con variables de entorno. El estudiante no tiene que configurar nada. Si falta una variable, la función correspondiente aparece como no disponible.
+
+| Variable al compilar | Para qué |
+| --- | --- |
+| `BC_GOOGLE_CLIENT_ID`, `BC_GOOGLE_CLIENT_SECRET` | Exportar a Google Calendar |
+| `BC_STATS_API_URL` | Histórico de cupos (`POST {url}/InscriptionStats/`) |
 
 **Google Calendar**: en Google Cloud Console crea un cliente OAuth de tipo **App de escritorio** y habilita la Google Calendar API. La app usa un redirect local (`http://127.0.0.1:<puerto>`) con PKCE y solo pide el alcance `calendar.app.created`, así que solo puede ver los calendarios que ella misma crea. El token se guarda en el llavero del sistema.
+
+> **TO-DO:** los releases oficiales todavía no incluyen estas credenciales, así que Google Calendar y el histórico de cupos aún no funcionan en los instaladores publicados. El detalle está en [docs/RELEASING.md](docs/RELEASING.md#pendiente-para-versiones-futuras).
 
 ## Contribuir
 

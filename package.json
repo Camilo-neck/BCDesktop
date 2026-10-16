@@ -1,7 +1,7 @@
 {
   "name": "bettercampus-desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Planeador de horarios y utilidades para estudiantes de la Universidad Nacional de Colombia",
   "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
@@ -37,6 +37,8 @@
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-dialog": "^2.2.2",
     "@tauri-apps/plugin-opener": "^2.2.7",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
