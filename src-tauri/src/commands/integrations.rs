@@ -120,7 +120,7 @@ pub async fn google_export(
         state.db().setting("googleCalendars")?.unwrap_or_default();
     let previous = calendars.get(&schedule.id).cloned();
     let name = format!("BetterCampus · {}", schedule.name);
-    let result = google::export(
+    let result = match google::export(
         &state.http,
         &token,
         &name,
@@ -128,7 +128,16 @@ pub async fn google_export(
         &events,
         |done, total| emit_progress(&app, "google", done, total, String::new()),
     )
-    .await?;
+    .await
+    {
+        Ok(r) => r,
+        // The token was revoked or lacks the calendar permission: sign in again.
+        Err(e @ Error::Auth(_)) => {
+            state.google_forget().await?;
+            return Err(e);
+        }
+        Err(e) => return Err(e),
+    };
     calendars.insert(schedule.id.clone(), result.calendar_id.clone());
     state
         .db()

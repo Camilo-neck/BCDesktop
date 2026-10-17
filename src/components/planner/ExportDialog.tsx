@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input, Label } from "@/components/ui/misc";
 import { Switch } from "@/components/ui/primitives";
-import { api, errorMessage } from "@/lib/api";
+import { ApiError, api, errorMessage } from "@/lib/api";
 import { useActiveSchedule } from "@/lib/data";
 import { useSetSetting, useSettings } from "@/lib/settings";
 import { useUi } from "@/lib/store";
@@ -65,6 +65,8 @@ export function ExportDialog() {
         description: r.failed ? `${r.failed} no se pudieron crear.` : `Calendario «BetterCampus · ${active.name}»`,
       });
     } catch (e) {
+      // The backend forgets a session Google no longer accepts: show "Conectar" again.
+      if (e instanceof ApiError && e.kind === "auth") qc.setQueryData(["google"], null);
       toast.error("No se pudo exportar a Google", { description: errorMessage(e) });
     } finally {
       setBusy(null);

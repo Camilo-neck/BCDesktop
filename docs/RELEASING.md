@@ -45,6 +45,17 @@ Se configuran en *Settings › Secrets and variables › Actions*. Se incrustan 
 | `BC_GOOGLE_CLIENT_SECRET` | Secret | Secret del mismo cliente |
 | `BC_STATS_API_URL` | Variable | URL base de la API de cupos |
 
+`BC_GOOGLE_CLIENT_ID` va en la pestaña **Variables** y `BC_GOOGLE_CLIENT_SECRET` en **Secrets**. Si se intercambian, el workflow no los encuentra. Para builds locales, los mismos nombres van en un `.env` en la raíz del proyecto (copia de `.env.example`, ignorado por git), que `src-tauri/build.rs` lee al compilar.
+
+### Google Calendar
+
+1. En [Google Cloud Console](https://console.cloud.google.com/), dentro del proyecto de BetterCampus, habilita la **Google Calendar API**.
+2. En la pantalla de consentimiento (*Google Auth Platform*), agrega el alcance `https://www.googleapis.com/auth/calendar.app.created` además de `openid`, `email` y `profile`.
+3. Crea un cliente OAuth de tipo **App de escritorio**. No necesita URIs de redirección: la app usa `http://127.0.0.1:<puerto aleatorio>`, que Google acepta para este tipo de cliente.
+4. Guarda su ID y su secret como se indica en la tabla. El secret de un cliente de escritorio no se considera confidencial, porque viaja dentro del binario. La seguridad del flujo la da PKCE.
+
+Mientras la app esté en estado **Prueba**, solo pueden conectarse las cuentas agregadas como usuarios de prueba, y Google invalida la sesión a los 7 días: la app pide conectar de nuevo. Para que funcione con cualquier cuenta, publica la app en producción. Si Google marca el alcance como sensible, tendrás que pasar su verificación.
+
 ## Actualizaciones de la app
 
 Las apps instaladas se actualizan con [`tauri-plugin-updater`](https://v2.tauri.app/plugin/updater/):
@@ -85,9 +96,7 @@ npx tauri signer generate -w ~/.tauri/bettercampus.key   # desde la carpeta del 
 
 ## Pendiente para versiones futuras
 
-- **TO-DO · Integraciones**: configurar en el repositorio las variables y secrets de [Variables y secrets del repositorio](#variables-y-secrets-del-repositorio) para que los releases incluyan Google Calendar y el histórico de cupos. Sin ellas, los instaladores publicados solo exportan a `.ics`. Pasos:
-  1. En Google Cloud Console, crear el proyecto de BetterCampus y habilitar la Google Calendar API.
-  2. Configurar la pantalla de consentimiento OAuth con el alcance `calendar.app.created` y enviarla a verificación de Google. Mientras no esté verificada, solo funciona para los usuarios de prueba.
-  3. Crear un cliente OAuth de tipo «App de escritorio» y guardar su ID y su secret como `BC_GOOGLE_CLIENT_ID` y `BC_GOOGLE_CLIENT_SECRET`.
-  4. Definir `BC_STATS_API_URL` con la URL pública de la API de cupos.
+- **TO-DO · Integraciones**:
+  - Publicar la pantalla de consentimiento de Google en producción (y pasar la verificación si la pide) para que cualquier cuenta pueda exportar a Google Calendar. Ver [Google Calendar](#google-calendar).
+  - Definir `BC_STATS_API_URL` con la URL pública de la API de cupos para que los releases incluyan el histórico de cupos.
 - **Firma de código**: sin certificado, Windows SmartScreen y macOS Gatekeeper muestran una advertencia al primer arranque. Para Windows se puede usar un certificado OV/EV o Azure Trusted Signing. Para macOS, una cuenta de Apple Developer más notarización. Ambos se configuran en `tauri-action` con secrets.

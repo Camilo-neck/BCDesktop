@@ -4,6 +4,12 @@ Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](h
 
 ## [Sin publicar]
 
+### Corregido
+
+- Si Google revoca el acceso o la sesión expira, la app desconecta la cuenta y pide conectarla de nuevo. Antes la cuenta seguía apareciendo como conectada y cada exportación fallaba.
+- Si al iniciar sesión se desmarca el permiso de Google Calendar, la app lo indica en lugar de fallar después al exportar.
+- Los errores de Google al conectar la cuenta o al exportar se muestran con un mensaje claro en lugar del texto técnico de la respuesta.
+
 ## [0.2.1] - 2026-10-16
 
 ### Corregido

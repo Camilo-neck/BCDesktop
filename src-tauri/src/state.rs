@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
-use bc_core::integrations::google::{Account, ClientConfig, Tokens};
+use bc_core::integrations::google::{self, Account, ClientConfig, Refresh, Tokens};
 use bc_core::sia::{Cancel, SiaService};
 use bc_core::storage::Db;
 use bc_core::{Error, Result};
@@ -136,11 +136,18 @@ impl AppState {
             .and_then(|t| t.refresh_token.clone())
             .or_else(|| self.stored_refresh_token())
             .ok_or_else(|| Error::Auth("Conecta tu cuenta de Google primero.".into()))?;
-        let tokens =
-            bc_core::integrations::google::refresh(&self.http, &self.google_client(), &refresh)
-                .await?;
-        let access = tokens.access_token.clone();
-        *guard = Some(tokens);
-        Ok(access)
+        match google::refresh(&self.http, &self.google_client(), &refresh).await? {
+            Refresh::Tokens(tokens) => {
+                let access = tokens.access_token.clone();
+                *guard = Some(tokens);
+                Ok(access)
+            }
+            Refresh::Revoked => {
+                // Release the lock first: forgetting the account takes it again.
+                drop(guard);
+                self.google_forget().await?;
+                Err(Error::Auth(google::SESSION_EXPIRED.into()))
+            }
+        }
     }
 }
