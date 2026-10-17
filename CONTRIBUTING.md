@@ -19,6 +19,8 @@ npm install
 npm run app:dev          # app completa con recarga en caliente
 ```
 
+Google Calendar y el histórico de cupos necesitan credenciales al compilar. Para probarlos, copia `.env.example` como `.env` y complétalo; sin ellas, esas funciones aparecen como no disponibles y el resto de la app funciona igual.
+
 Para trabajar solo en la interfaz no hace falta compilar Rust:
 
 ```bash

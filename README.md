@@ -111,9 +111,11 @@ Las integraciones externas se configuran **al compilar**, con variables de entor
 | `BC_GOOGLE_CLIENT_ID`, `BC_GOOGLE_CLIENT_SECRET` | Exportar a Google Calendar |
 | `BC_STATS_API_URL` | Histórico de cupos (`POST {url}/InscriptionStats/`) |
 
+Para compilar localmente con ellas, copia `.env.example` como `.env` (ignorado por git) y complétalo. En los releases salen de las variables y secrets del repositorio ([docs/RELEASING.md](docs/RELEASING.md#variables-y-secrets-del-repositorio)).
+
 **Google Calendar**: en Google Cloud Console crea un cliente OAuth de tipo **App de escritorio** y habilita la Google Calendar API. La app usa un redirect local (`http://127.0.0.1:<puerto>`) con PKCE y solo pide el alcance `calendar.app.created`, así que solo puede ver los calendarios que ella misma crea. El token se guarda en el llavero del sistema.
 
-> **TO-DO:** los releases oficiales todavía no incluyen estas credenciales, así que Google Calendar y el histórico de cupos aún no funcionan en los instaladores publicados. El detalle está en [docs/RELEASING.md](docs/RELEASING.md#pendiente-para-versiones-futuras).
+> **TO-DO:** el histórico de cupos todavía no está incluido en los instaladores publicados, y Google Calendar solo funciona para todos cuando la pantalla de consentimiento de Google esté publicada. El detalle está en [docs/RELEASING.md](docs/RELEASING.md#pendiente-para-versiones-futuras).
 
 ## Contribuir
 
