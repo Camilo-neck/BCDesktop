@@ -28,7 +28,12 @@ const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const USERINFO_URL: &str = "https://openidconnect.googleapis.com/v1/userinfo";
 const CALENDAR_API: &str = "https://www.googleapis.com/calendar/v3";
 /// Least privilege: the app only manages calendars it creates itself.
+const CALENDAR_SCOPE: &str = "https://www.googleapis.com/auth/calendar.app.created";
 const SCOPES: &str = "openid email profile https://www.googleapis.com/auth/calendar.app.created";
+
+/// Shown when Google no longer accepts the stored session; the app forgets the account.
+pub const SESSION_EXPIRED: &str =
+    "Tu sesión de Google expiró o se revocó el acceso. Conecta tu cuenta de nuevo.";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -65,6 +70,56 @@ struct TokenResponse {
     access_token: String,
     expires_in: i64,
     refresh_token: Option<String>,
+    /// Space-separated scopes actually granted: with granular consent the user may uncheck some.
+    #[serde(default)]
+    scope: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct OAuthError {
+    #[serde(default)]
+    error: String,
+    #[serde(default)]
+    error_description: Option<String>,
+}
+
+/// Result of using a stored refresh token.
+pub enum Refresh {
+    Tokens(Tokens),
+    /// Google rejected the refresh token (revoked, expired or from another client): sign in again.
+    Revoked,
+}
+
+/// Why the token endpoint failed.
+enum TokenError {
+    InvalidGrant,
+    Other(Error),
+}
+
+impl From<Error> for TokenError {
+    fn from(e: Error) -> Self {
+        TokenError::Other(e)
+    }
+}
+
+impl From<reqwest::Error> for TokenError {
+    fn from(e: reqwest::Error) -> Self {
+        TokenError::Other(e.into())
+    }
+}
+
+/// A readable message for an OAuth error code from Google.
+fn oauth_message(e: &OAuthError) -> String {
+    match e.error.as_str() {
+        "invalid_client" | "unauthorized_client" => {
+            "La configuración de Google de esta versión de la app no es válida.".into()
+        }
+        "access_denied" => "Google no autorizó el acceso.".into(),
+        _ => match &e.error_description {
+            Some(d) => format!("Google rechazó la autorización: {d}"),
+            None => format!("Google rechazó la autorización ({}).", e.error),
+        },
+    }
 }
 
 fn random_token(bytes: usize) -> String {
@@ -175,20 +230,47 @@ pub async fn authorize(
     if let Some(s) = cfg.client_secret.as_ref().filter(|s| !s.is_empty()) {
         form.push(("client_secret", s.clone()));
     }
-    let tokens = token_request(http, &form).await?;
+    let tokens = match token_request(http, &form).await {
+        Ok(t) => t,
+        // A code is single-use and short-lived: this only happens if the sign-in took too long.
+        Err(TokenError::InvalidGrant) => {
+            return Err(Error::Auth(
+                "El inicio de sesión expiró. Inténtalo de nuevo.".into(),
+            ))
+        }
+        Err(TokenError::Other(e)) => return Err(e),
+    };
     let account = account(http, &tokens.access_token).await?;
     Ok((tokens, account))
 }
 
-async fn token_request(http: &reqwest::Client, form: &[(&str, String)]) -> Result<Tokens> {
+/// Whether the granted scopes include calendar access. Google omits `scope` in some
+/// refresh responses; treat that as unchanged.
+fn has_calendar_scope(scope: Option<&str>) -> bool {
+    scope.is_none_or(|s| s.split_whitespace().any(|x| x == CALENDAR_SCOPE))
+}
+
+async fn token_request(
+    http: &reqwest::Client,
+    form: &[(&str, String)],
+) -> std::result::Result<Tokens, TokenError> {
     let res = http.post(TOKEN_URL).form(form).send().await?;
     if !res.status().is_success() {
         let body = res.text().await.unwrap_or_default();
-        return Err(Error::Auth(format!(
-            "Google rechazó la autorización: {body}"
-        )));
+        let err: OAuthError = serde_json::from_str(&body).unwrap_or_default();
+        if err.error == "invalid_grant" {
+            return Err(TokenError::InvalidGrant);
+        }
+        log::warn!("google token endpoint failed: {body}");
+        return Err(Error::Auth(oauth_message(&err)).into());
     }
     let t: TokenResponse = res.json().await?;
+    if !has_calendar_scope(t.scope.as_deref()) {
+        return Err(Error::Auth(
+            "Para exportar, deja marcado el permiso de Google Calendar al iniciar sesión.".into(),
+        )
+        .into());
+    }
     Ok(Tokens {
         access_token: t.access_token,
         refresh_token: t.refresh_token,
@@ -200,7 +282,7 @@ pub async fn refresh(
     http: &reqwest::Client,
     cfg: &ClientConfig,
     refresh_token: &str,
-) -> Result<Tokens> {
+) -> Result<Refresh> {
     let mut form = vec![
         ("client_id", cfg.client_id.clone()),
         ("refresh_token", refresh_token.to_owned()),
@@ -209,10 +291,15 @@ pub async fn refresh(
     if let Some(s) = cfg.client_secret.as_ref().filter(|s| !s.is_empty()) {
         form.push(("client_secret", s.clone()));
     }
-    let mut t = token_request(http, &form).await?;
-    t.refresh_token
-        .get_or_insert_with(|| refresh_token.to_owned());
-    Ok(t)
+    match token_request(http, &form).await {
+        Ok(mut t) => {
+            t.refresh_token
+                .get_or_insert_with(|| refresh_token.to_owned());
+            Ok(Refresh::Tokens(t))
+        }
+        Err(TokenError::InvalidGrant) => Ok(Refresh::Revoked),
+        Err(TokenError::Other(e)) => Err(e),
+    }
 }
 
 pub async fn account(http: &reqwest::Client, access_token: &str) -> Result<Account> {
@@ -275,6 +362,16 @@ fn should_retry(status: u16, body: &str) -> bool {
     }
 }
 
+/// Whether a failed Calendar API call means the session is no longer usable: the token was
+/// revoked (401) or lacks the calendar permission (403 with an insufficient-scope reason).
+fn needs_new_session(status: u16, body: &str) -> bool {
+    let body = body.to_ascii_lowercase();
+    status == 401
+        || (status == 403
+            && (body.contains("insufficientpermissions")
+                || body.contains("access_token_scope_insufficient")))
+}
+
 async fn send_with_retry(req: impl Fn() -> reqwest::RequestBuilder) -> Result<Value> {
     let mut wait = Duration::from_millis(500);
     for attempt in 0..5 {
@@ -293,9 +390,14 @@ async fn send_with_retry(req: impl Fn() -> reqwest::RequestBuilder) -> Result<Va
             wait *= 2;
             continue;
         }
-        return Err(Error::External(format!(
-            "Google Calendar respondió {status}: {body}"
-        )));
+        log::warn!("google calendar failed with {status}: {body}");
+        return Err(if needs_new_session(status.as_u16(), &body) {
+            Error::Auth(SESSION_EXPIRED.into())
+        } else {
+            Error::External(format!(
+                "Google Calendar respondió con un error ({status}). Inténtalo de nuevo más tarde."
+            ))
+        });
     }
     unreachable!()
 }
@@ -403,6 +505,35 @@ mod tests {
         assert!(!should_retry(403, forbidden));
         assert!(!should_retry(401, ""));
         assert!(!should_retry(404, ""));
+    }
+
+    #[test]
+    fn detects_sessions_that_need_a_new_sign_in() {
+        let scope = r#"{"error":{"code":403,"errors":[{"reason":"insufficientPermissions"}],"details":[{"reason":"ACCESS_TOKEN_SCOPE_INSUFFICIENT"}]}}"#;
+        let quota = r#"{"error":{"errors":[{"reason":"rateLimitExceeded"}]}}"#;
+        assert!(needs_new_session(401, ""));
+        assert!(needs_new_session(403, scope));
+        assert!(!needs_new_session(403, quota));
+        assert!(!needs_new_session(404, ""));
+    }
+
+    #[test]
+    fn checks_the_granted_calendar_scope() {
+        assert!(has_calendar_scope(Some(
+            "openid https://www.googleapis.com/auth/calendar.app.created email"
+        )));
+        assert!(!has_calendar_scope(Some("openid email profile")));
+        assert!(has_calendar_scope(None));
+    }
+
+    #[test]
+    fn explains_oauth_errors() {
+        let e = |error: &str| OAuthError {
+            error: error.into(),
+            error_description: None,
+        };
+        assert!(oauth_message(&e("invalid_client")).contains("configuración"));
+        assert!(oauth_message(&e("weird")).contains("weird"));
     }
 
     #[test]
